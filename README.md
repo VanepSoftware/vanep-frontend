@@ -75,12 +75,14 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## run ci
 
-#runtests
-- npm run test:coverage || npm run test
-#runlint
-- npm run lint
-#runaudit
-- npm audit
+#run tests
+**npm run test:coverage || npm run test**
+
+#run lint
+**npm run lint**
+
+#run audit
+**npm audit**
 
 
 ## License
