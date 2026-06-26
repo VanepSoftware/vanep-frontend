@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Providers } from "@/components/providers";
+import { ProfileButton } from "@/components/profile-button";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,7 +29,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full`}>
-      <body className="min-h-full flex flex-col bg-background text-foreground antialiased">{children}</body>
+      <body className="min-h-full flex flex-col bg-background text-foreground antialiased">
+        <Providers>
+          <ProfileButton />
+          {children}
+        </Providers>
+      </body>
     </html>
   );
 }
