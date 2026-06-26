@@ -56,6 +56,34 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
+## Authentication (OAuth2)
+
+Login uses the Vanep backend (Spring Authorization Server) via **NextAuth**, in the same
+authorization-code + PKCE model as `checklists-frontend`.
+
+- A **profile icon** (top-right) starts the flow: clicking it (when logged out) redirects to the
+  backend login (`/oauth2/authorize`). After login the session token is persisted (NextAuth JWT
+  cookie) and the user stays logged in across reloads; the icon then shows the account + **Sair**.
+- The access token is refreshed automatically via the backend `/oauth2/token` (refresh grant).
+
+Copy the env file and fill it in:
+
+```bash
+cp .env.example .env.local
+```
+
+| Variable | Description |
+| --- | --- |
+| `AUTH_URL` | Backend base URL (no `/api`), e.g. `http://localhost:8080` |
+| `AUTH_OAUTH_CLIENT_ID` | Public OAuth client id registered in the backend (`vanep-frontend`) |
+| `AUTH_SECRET` | Secret to sign the NextAuth session JWT (`openssl rand -base64 32`) |
+| `NEXTAUTH_URL` | This app's public URL (dev: `http://localhost:3000`) |
+
+> The callback `${NEXTAUTH_URL}/api/auth/callback/vanep` must be in the backend client's
+> `VANEP_OAUTH_REDIRECT_URIS`.
+
+---
+
 ## Available Scripts
 
 | Command         | Description                   |
