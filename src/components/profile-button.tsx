@@ -3,7 +3,6 @@
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useState } from "react";
 
-/** Ícone de perfil no canto superior direito. Sem sessão, leva ao login do backend. */
 export function ProfileButton() {
   const { data: session, status } = useSession();
   const [open, setOpen] = useState(false);
