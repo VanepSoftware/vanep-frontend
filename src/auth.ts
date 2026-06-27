@@ -1,6 +1,6 @@
 import type { NextAuthOptions } from "next-auth";
 
-import { maybeRefreshAccessToken } from "@/lib/server/oauth-session";
+import { maybeRefreshAccessToken, revokeToken } from "@/lib/server/oauth-session";
 
 // Base URL do backend Vanep (Spring Authorization Server), sem sufixo /api.
 const authUrl = process.env.AUTH_URL ?? "";
@@ -63,6 +63,17 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session }) {
       return session;
+    },
+  },
+  events: {
+    // No logout, revoga os tokens no backend (o cookie de sessão é limpo pelo próprio NextAuth).
+    async signOut({ token }) {
+      if (typeof token.refreshToken === "string") {
+        await revokeToken(token.refreshToken, "refresh_token");
+      }
+      if (typeof token.accessToken === "string") {
+        await revokeToken(token.accessToken, "access_token");
+      }
     },
   },
   session: {

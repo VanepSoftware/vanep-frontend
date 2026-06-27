@@ -78,6 +78,30 @@ export async function refreshAccessToken(token: JWT): Promise<JWT> {
   return refreshPromise;
 }
 
+/**
+ * Revoga um token no endpoint /oauth2/revoke do Authorization Server (best-effort). Usado no
+ * logout para invalidar o refresh token no servidor — sem isso ele seguiria válido por ~90 dias.
+ */
+export async function revokeToken(
+  token: string,
+  tokenTypeHint: "access_token" | "refresh_token",
+): Promise<void> {
+  try {
+    const body = new URLSearchParams({
+      token,
+      token_type_hint: tokenTypeHint,
+      client_id: process.env.AUTH_OAUTH_CLIENT_ID ?? "",
+    });
+    await fetch(`${authBaseUrl()}/oauth2/revoke`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+  } catch {
+    // Revogação é best-effort: o cookie de sessão já foi limpo de qualquer forma.
+  }
+}
+
 /** Renova o access token caso esteja expirado (ou perto disso). */
 export async function maybeRefreshAccessToken(
   token: JWT,
