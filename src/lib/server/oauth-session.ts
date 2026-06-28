@@ -1,6 +1,5 @@
 import type { JWT } from "next-auth/jwt";
 
-// Buffer para renovar o access token um pouco antes de expirar.
 export const ACCESS_TOKEN_REFRESH_BUFFER_SECONDS = 30;
 
 const refreshInFlightByToken = new Map<string, Promise<JWT>>();
@@ -9,7 +8,6 @@ function authBaseUrl(): string {
   return process.env.AUTH_URL ?? "";
 }
 
-/** Lê o `exp` (epoch em segundos) de um JWT de access token, se possível. */
 export function getAccessTokenExp(accessToken: string): number | undefined {
   try {
     const payload = JSON.parse(Buffer.from(accessToken.split(".")[1], "base64url").toString());
@@ -20,11 +18,6 @@ export function getAccessTokenExp(accessToken: string): number | undefined {
   }
 }
 
-/**
- * Renova o access token via refresh token no endpoint /oauth2/token do Spring
- * Authorization Server (form-urlencoded, cliente público). Deduplica chamadas
- * concorrentes para o mesmo refresh token.
- */
 export async function refreshAccessToken(token: JWT): Promise<JWT> {
   const refreshToken = token.refreshToken;
   if (!refreshToken || typeof refreshToken !== "string") {
@@ -78,7 +71,26 @@ export async function refreshAccessToken(token: JWT): Promise<JWT> {
   return refreshPromise;
 }
 
-/** Renova o access token caso esteja expirado (ou perto disso). */
+export async function revokeToken(
+  token: string,
+  tokenTypeHint: "access_token" | "refresh_token",
+): Promise<void> {
+  try {
+    const body = new URLSearchParams({
+      token,
+      token_type_hint: tokenTypeHint,
+      client_id: process.env.AUTH_OAUTH_CLIENT_ID ?? "",
+    });
+    await fetch(`${authBaseUrl()}/oauth2/revoke`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+  } catch {
+    
+  }
+}
+
 export async function maybeRefreshAccessToken(
   token: JWT,
 ): Promise<{ token: JWT; refreshed: boolean }> {

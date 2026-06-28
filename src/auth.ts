@@ -1,15 +1,9 @@
 import type { NextAuthOptions } from "next-auth";
 
-import { maybeRefreshAccessToken } from "@/lib/server/oauth-session";
+import { maybeRefreshAccessToken, revokeToken } from "@/lib/server/oauth-session";
 
-// Base URL do backend Vanep (Spring Authorization Server), sem sufixo /api.
 const authUrl = process.env.AUTH_URL ?? "";
 
-/**
- * Integração OAuth2 com o backend Vanep, no mesmo modelo do checklists-frontend:
- * authorization code + PKCE, cliente público (token_endpoint_auth_method: none).
- * O "userinfo" é o endpoint custom GET /api/user/profile do Resource Server.
- */
 export const authOptions: NextAuthOptions = {
   providers: [
     {
@@ -63,6 +57,17 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session }) {
       return session;
+    },
+  },
+  events: {
+    
+    async signOut({ token }) {
+      if (typeof token.refreshToken === "string") {
+        await revokeToken(token.refreshToken, "refresh_token");
+      }
+      if (typeof token.accessToken === "string") {
+        await revokeToken(token.accessToken, "access_token");
+      }
     },
   },
   session: {
