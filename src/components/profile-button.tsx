@@ -51,7 +51,10 @@ export function ProfileButton() {
           </div>
           <button
             type="button"
-            onClick={() => signOut({ callbackUrl: "/" })}
+            onClick={async () => {
+              await signOut({ redirect: false });
+              window.location.href = "/api/auth/sso-logout";
+            }}
             className="block w-full px-4 py-3 text-left text-sm text-foreground transition-colors hover:bg-[var(--muted)]"
           >
             Sair
