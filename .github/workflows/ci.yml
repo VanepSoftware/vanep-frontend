@@ -7,12 +7,12 @@ on:
     branches: [main]
 
 concurrency:
-  group: ci-${{ github.head_ref }}
+  group: ci-${{ github.head_ref || github.sha }}
   cancel-in-progress: true
 
 jobs:
-  audit:
-    name: Security Audit
+  verify:
+    name: Audit · Lint · Test · Build
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
@@ -22,40 +22,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm audit --audit-level=high
-
-  lint:
-    name: Lint
-    runs-on: self-hosted
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
       - run: npm run lint
-
-  test:
-    name: Test & Coverage
-    runs-on: self-hosted
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
       - run: npm run test:coverage
-
-  build:
-    name: Build
-    runs-on: self-hosted
-    needs: [audit, lint, test]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
       - run: npm run build

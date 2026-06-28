@@ -124,12 +124,12 @@ src/
 
 ## CI (GitHub Actions)
 
-O workflow `.github/workflows/ci.yml` roda em push/PR para `main`:
+O workflow `.github/workflows/ci.yml` roda em push/PR para `main` num único job sequencial:
 
-1. **Security Audit** — `npm audit --audit-level=high`
-2. **Lint** — `npm run lint`
-3. **Test & Coverage** — `npm run test:coverage`
-4. **Build** — `npm run build` (depende dos 3 anteriores)
+1. `npm audit --audit-level=high`
+2. `npm run lint`
+3. `npm run test:coverage`
+4. `npm run build`
 
 ---
 
