@@ -4,6 +4,7 @@ import {
   getAccessTokenExp,
   maybeRefreshAccessToken,
   refreshAccessToken,
+  revokeToken,
 } from "@/lib/server/oauth-session";
 
 function makeJwt(exp: number): string {
@@ -83,6 +84,35 @@ describe("refreshAccessToken", () => {
 
     expect(a).toBe(b);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("revokeToken", () => {
+  beforeEach(() => {
+    process.env.AUTH_URL = "http://backend";
+    process.env.AUTH_OAUTH_CLIENT_ID = "vanep-frontend";
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it("posts to the revoke endpoint with the token hint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await revokeToken("the-token", "refresh_token");
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://backend/oauth2/revoke");
+    expect(init.method).toBe("POST");
+    expect((init.body as URLSearchParams).get("token")).toBe("the-token");
+    expect((init.body as URLSearchParams).get("token_type_hint")).toBe("refresh_token");
+  });
+
+  it("swallows network errors", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network")));
+
+    await expect(revokeToken("t", "access_token")).resolves.toBeUndefined();
   });
 });
 
