@@ -9,7 +9,7 @@ export function ProfileButton() {
 
   if (status === "loading") {
     return (
-      <div className="fixed right-4 top-4 z-50 h-10 w-10 animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-800" />
+      <div className="fixed right-4 top-4 z-50 h-10 w-10 animate-pulse rounded-full bg-muted" />
     );
   }
 
@@ -36,7 +36,7 @@ export function ProfileButton() {
         type="button"
         aria-label="Abrir menu da conta"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900 text-sm font-semibold text-white transition-opacity hover:opacity-80 dark:bg-zinc-100 dark:text-zinc-900"
+        className="flex h-10 w-10 items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-foreground transition-opacity hover:opacity-80"
       >
         {initial}
       </button>
