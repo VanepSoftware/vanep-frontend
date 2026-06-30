@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Wordmark } from "@/components/wordmark";
-import { landing } from "@/content/landing";
+import { t } from "@/lib/l10n";
+
+const landing = t("landing");
 
 export default function Home() {
   return (

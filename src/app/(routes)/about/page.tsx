@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Wordmark } from "@/components/wordmark";
+import { t } from "@/lib/l10n";
+
+const about = t("about");
 
 export const metadata: Metadata = {
-  title: "Sobre"
+  title: about.metaTitle
 };
 
 export default function About() {
@@ -12,27 +15,24 @@ export default function About() {
       <div className="flex flex-col items-center gap-4">
         <Wordmark className="text-5xl" />
         <span className="text-xs uppercase tracking-[0.3em] text-brand">
-          Nossa história
+          {about.eyebrow}
         </span>
         <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
-          Sobre o Vanep
+          {about.title}
         </h1>
         <p className="text-base leading-7 text-muted-foreground">
-          O Vanep nasceu para trazer clareza e segurança ao transporte escolar —
-          para responsáveis, motoristas e escolas. Substituímos a informalidade
-          do boca a boca, dos grupos de WhatsApp e dos contratos no papel por um
-          ecossistema digital completo.
+          {about.intro}
         </p>
       </div>
 
       <div className="h-px w-12 bg-border" />
 
       <div className="flex flex-col gap-2">
-        <h2 className="text-xs uppercase tracking-widest text-brand">Missão</h2>
+        <h2 className="text-xs uppercase tracking-widest text-brand">
+          {about.missionLabel}
+        </h2>
         <p className="text-base leading-7 text-muted-foreground">
-          Ser o sistema operacional do transporte escolar no Brasil: tornar a
-          gestão transparente, confiável e sem estresse para cada família e cada
-          rota.
+          {about.mission}
         </p>
       </div>
 
@@ -40,7 +40,7 @@ export default function About() {
         href="/"
         className="text-sm text-muted-foreground transition-colors hover:text-brand"
       >
-        ← Voltar para o início
+        {about.back}
       </Link>
     </main>
   );
