@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ScrollToTopLink } from "@/components/scroll-to-top-link";
 import { Wordmark } from "@/components/wordmark";
 import { t } from "@/lib/l10n";
 
@@ -29,8 +30,10 @@ export default function Home() {
 function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background-deep/70 backdrop-blur-md">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between pl-6 pr-16">
-        <Wordmark className="text-2xl" withTrail={false} />
+      <div className="flex h-16 w-full items-center justify-between pl-6 pr-16">
+        <ScrollToTopLink className="select-none" ariaLabel="Voltar ao início">
+          <Wordmark className="text-2xl" withTrail={false} />
+        </ScrollToTopLink>
         <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
           {landing.header.nav.map((item) => (
             <a
