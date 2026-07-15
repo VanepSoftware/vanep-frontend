@@ -104,3 +104,35 @@ describe("userinfo request", () => {
     );
   });
 });
+
+describe("admin session claims", () => {
+  it("stores the user type from the profile on sign-in", async () => {
+    const result = await authOptions.callbacks!.jwt!({
+      token: {} as any,
+      account: { access_token: "at", refresh_token: "rt" } as any,
+      profile: { type: "ADMIN" } as any,
+    } as any);
+
+    expect(result.userType).toBe("ADMIN");
+  });
+
+  it("ignores profiles without a type", async () => {
+    const result = await authOptions.callbacks!.jwt!({
+      token: {} as any,
+      account: { access_token: "at" } as any,
+      profile: {} as any,
+    } as any);
+
+    expect(result.userType).toBeUndefined();
+  });
+
+  it("exposes the user type on the session", async () => {
+    const session = { user: { email: "a@b.com" } } as any;
+    const result = await authOptions.callbacks!.session!({
+      session,
+      token: { userType: "ADMIN" } as any,
+    } as any);
+
+    expect((result.user as { userType?: string } | undefined)?.userType).toBe("ADMIN");
+  });
+});
