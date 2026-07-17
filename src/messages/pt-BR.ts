@@ -163,6 +163,48 @@ const ptBR = {
       "Ser o sistema operacional do transporte escolar no Brasil: tornar a gestão transparente, confiável e sem estresse para cada família e cada rota.",
     back: "← Voltar para o início",
   },
+
+  admin: {
+    metaTitle: "Painel administrativo",
+    sidebar: {
+      title: "Painel Vanep",
+      subtitle: "Administração",
+      clients: "Clientes",
+      drivers: "Motoristas",
+      roles: "Cargos",
+      soon: "Em breve",
+      backToSite: "← Voltar ao site",
+    },
+    clients: {
+      title: "Clientes",
+      description: "Todos os clientes cadastrados na plataforma.",
+      columns: {
+        name: "Nome",
+        email: "E-mail",
+        rating: "Avaliação",
+        status: "Status",
+        createdAt: "Cadastro",
+        actions: "Ações",
+      },
+      active: "Ativo",
+      inactive: "Inativo",
+      noName: "Sem nome",
+      noRating: "—",
+      empty: "Nenhum cliente encontrado.",
+      loading: "Carregando clientes...",
+      loadError: "Não foi possível carregar os clientes.",
+      retry: "Tentar novamente",
+      delete: "Excluir",
+      deleteTitle: "Excluir cliente",
+      deleteDescription:
+        "Tem certeza que deseja excluir este cliente? O registro é desativado (soft delete) e pode ser restaurado depois.",
+      deleteError: "Não foi possível excluir o cliente.",
+      previous: "Anterior",
+      next: "Próxima",
+      pageInfo: "Página {page} de {total}",
+      totalInfo: "{total} cliente(s) no total",
+    },
+  },
 } as const;
 
 export default ptBR;
