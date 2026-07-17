@@ -56,6 +56,13 @@ export default function AdminClientsPage() {
   const [error, setError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editTarget, setEditTarget] = useState<Client | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhoto, setEditPhoto] = useState("");
+  const [editRating, setEditRating] = useState("");
+  const [editActive, setEditActive] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const loadClients = useCallback(async (targetPage: number) => {
     setLoading(true);
@@ -74,6 +81,46 @@ export default function AdminClientsPage() {
   useEffect(() => {
     void loadClients(page);
   }, [page, loadClients]);
+
+  function openEdit(client: Client) {
+    setEditTarget(client);
+    setEditName(client.name ?? "");
+    setEditEmail(client.email ?? "");
+    setEditPhoto(client.photo ?? "");
+    setEditRating(client.rating != null ? String(client.rating) : "");
+    setEditActive(client.active);
+  }
+
+  async function saveEdit(event: { preventDefault: () => void }) {
+    event.preventDefault();
+    if (!editTarget) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/clients/${encodeURIComponent(editTarget.token)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editName.trim() || null,
+          email: editEmail.trim() || null,
+          photo: editPhoto.trim() || null,
+          rating: editRating.trim() ? Number(editRating) : null,
+          active: editActive,
+        }),
+      });
+      if (!res.ok) {
+        setError(res.status === 409 ? messages.editConflict : messages.editError);
+        setEditTarget(null);
+        return;
+      }
+      setEditTarget(null);
+      await loadClients(page);
+    } catch {
+      setError(messages.editError);
+      setEditTarget(null);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function confirmDelete() {
     if (!deleteTarget) return;
@@ -170,13 +217,22 @@ export default function AdminClientsPage() {
                     {formatDate(client.createdAt)}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      onClick={() => setDeleteTarget(client)}
-                      className="rounded-lg border border-red-400/40 px-3 py-1.5 text-xs font-semibold text-red-300 transition-colors hover:bg-red-500/10"
-                    >
-                      {messages.delete}
-                    </button>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(client)}
+                        className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-brand hover:text-brand"
+                      >
+                        {messages.edit}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTarget(client)}
+                        className="rounded-lg border border-red-400/40 px-3 py-1.5 text-xs font-semibold text-red-300 transition-colors hover:bg-red-500/10"
+                      >
+                        {messages.delete}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -220,6 +276,98 @@ export default function AdminClientsPage() {
         onConfirm={() => void confirmDelete()}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      {editTarget != null && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={messages.editTitle}
+        >
+          <form
+            onSubmit={(event) => void saveEdit(event)}
+            className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--background)] p-6 shadow-2xl"
+          >
+            <h2 className="font-display text-lg font-bold text-foreground">
+              {messages.editTitle}
+            </h2>
+
+            <label className="mt-4 block text-sm text-muted-foreground">
+              {messages.nameLabel}
+              <input
+                type="text"
+                value={editName}
+                onChange={(event) => setEditName(event.target.value)}
+                maxLength={255}
+                className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background-deep)] px-3 py-2 text-sm text-foreground outline-none focus:border-brand"
+              />
+            </label>
+
+            <label className="mt-4 block text-sm text-muted-foreground">
+              {messages.emailLabel}
+              <input
+                type="email"
+                value={editEmail}
+                onChange={(event) => setEditEmail(event.target.value)}
+                maxLength={255}
+                className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background-deep)] px-3 py-2 text-sm text-foreground outline-none focus:border-brand"
+              />
+            </label>
+
+            <label className="mt-4 block text-sm text-muted-foreground">
+              {messages.photoLabel}
+              <input
+                type="url"
+                value={editPhoto}
+                onChange={(event) => setEditPhoto(event.target.value)}
+                placeholder="https://..."
+                className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background-deep)] px-3 py-2 text-sm text-foreground outline-none focus:border-brand"
+              />
+            </label>
+
+            <label className="mt-4 block text-sm text-muted-foreground">
+              {messages.ratingLabel}
+              <input
+                type="number"
+                min={0}
+                max={5}
+                step={0.1}
+                value={editRating}
+                onChange={(event) => setEditRating(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background-deep)] px-3 py-2 text-sm text-foreground outline-none focus:border-brand"
+              />
+            </label>
+
+            <label className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={editActive}
+                onChange={(event) => setEditActive(event.target.checked)}
+                className="h-4 w-4 accent-[var(--brand)]"
+              />
+              {messages.activeLabel}
+            </label>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setEditTarget(null)}
+                disabled={saving}
+                className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-foreground transition-opacity hover:opacity-80 disabled:opacity-50"
+              >
+                {t("common").cancel}
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                {saving ? t("common").loading : messages.save}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </section>
   );
 }
