@@ -45,17 +45,23 @@ export const authOptions: NextAuthOptions = {
     },
   ],
   callbacks: {
-    async jwt({ token, account }) {
+    async jwt({ token, account, profile }) {
       if (account) {
         token.accessToken = account.access_token;
         token.refreshToken = account.refresh_token;
+        if (profile && typeof (profile as { type?: unknown }).type === "string") {
+          token.userType = (profile as { type: string }).type;
+        }
         return token;
       }
 
       const { token: next } = await maybeRefreshAccessToken(token);
       return next;
     },
-    async session({ session }) {
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.userType = token?.userType;
+      }
       return session;
     },
   },
