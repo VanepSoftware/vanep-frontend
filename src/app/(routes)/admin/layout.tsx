@@ -21,22 +21,28 @@ export default function AdminLayout({ children }: Readonly<{ children: React.Rea
         <nav className="flex flex-1 flex-col gap-1">
           <Link
             href="/admin/clients"
-            className="rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground transition-opacity hover:opacity-90"
+            className="rounded-lg px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-brand/10 hover:text-brand"
           >
             {admin.sidebar.clients}
           </Link>
-          <span
-            className="cursor-not-allowed rounded-lg px-4 py-2.5 text-sm text-muted-foreground/60"
-            title={admin.sidebar.soon}
+          <Link
+            href="/admin/roles"
+            className="rounded-lg px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-brand/10 hover:text-brand"
           >
-            {admin.sidebar.drivers} · {admin.sidebar.soon}
-          </span>
-          <span
-            className="cursor-not-allowed rounded-lg px-4 py-2.5 text-sm text-muted-foreground/60"
-            title={admin.sidebar.soon}
+            {admin.sidebar.roles}
+          </Link>
+          <Link
+            href="/admin/permissions"
+            className="rounded-lg px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-brand/10 hover:text-brand"
           >
-            {admin.sidebar.roles} · {admin.sidebar.soon}
-          </span>
+            {admin.sidebar.permissions}
+          </Link>
+          <Link
+            href="/admin/drivers"
+            className="rounded-lg px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-brand/10 hover:text-brand"
+          >
+            {admin.sidebar.drivers}
+          </Link>
         </nav>
 
         <Link

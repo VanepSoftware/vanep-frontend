@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 type ScrollToTopLinkProps = {
   children: React.ReactNode;
   className?: string;
@@ -8,7 +10,7 @@ type ScrollToTopLinkProps = {
 
 export function ScrollToTopLink({ children, className, ariaLabel }: ScrollToTopLinkProps) {
   return (
-    <a
+    <Link
       href="/"
       className={className}
       aria-label={ariaLabel}
@@ -18,6 +20,6 @@ export function ScrollToTopLink({ children, className, ariaLabel }: ScrollToTopL
       }}
     >
       {children}
-    </a>
+    </Link>
   );
 }
