@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminButton } from "@/components/admin-button";
 import { ScrollToTopLink } from "@/components/scroll-to-top-link";
 import { Wordmark } from "@/components/wordmark";
 import { t } from "@/lib/l10n";
@@ -45,12 +46,15 @@ function SiteHeader() {
             </a>
           ))}
         </nav>
-        <Link
-          href="/about"
-          className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-brand hover:text-brand"
-        >
-          {landing.header.aboutCta}
-        </Link>
+        <div className="flex items-center gap-3">
+          <AdminButton />
+          <Link
+            href="/about"
+            className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-brand hover:text-brand"
+          >
+            {landing.header.aboutCta}
+          </Link>
+        </div>
       </div>
     </header>
   );

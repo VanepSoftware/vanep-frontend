@@ -9,7 +9,7 @@ export function ProfileButton() {
 
   if (status === "loading") {
     return (
-      <div className="fixed right-4 top-4 z-50 h-10 w-10 animate-pulse rounded-full bg-muted" />
+      <div className="fixed right-4 top-3 z-50 h-10 w-10 animate-pulse rounded-full bg-muted" />
     );
   }
 
@@ -20,7 +20,7 @@ export function ProfileButton() {
         aria-label="Entrar"
         title="Entrar"
         onClick={() => signIn("vanep", { callbackUrl: "/" })}
-        className="fixed right-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] text-foreground transition-opacity hover:opacity-80"
+        className="fixed right-4 top-3 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] text-foreground transition-opacity hover:opacity-80"
       >
         <ProfileIcon />
       </button>
@@ -31,7 +31,7 @@ export function ProfileButton() {
   const initial = name.trim().charAt(0).toUpperCase() || "?";
 
   return (
-    <div className="fixed right-4 top-4 z-50">
+    <div className="fixed right-4 top-3 z-50">
       <button
         type="button"
         aria-label="Abrir menu da conta"
