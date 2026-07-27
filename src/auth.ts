@@ -19,9 +19,9 @@ export const authOptions: NextAuthOptions = {
       },
       token: `${authUrl}/oauth2/token`,
       userinfo: {
-        url: `${authUrl}/api/user/profile`,
+        url: `${authUrl}/api/user/me`,
         async request({ tokens }) {
-          const res = await fetch(`${authUrl}/api/user/profile`, {
+          const res = await fetch(`${authUrl}/api/user/me`, {
             headers: {
               Authorization: `Bearer ${tokens.access_token}`,
               Accept: "application/json",

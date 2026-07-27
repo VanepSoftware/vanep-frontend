@@ -80,16 +80,21 @@ describe("session callback", () => {
 describe("userinfo request", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it("fetches the profile with the bearer token", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        text: async () => JSON.stringify({ token: "t", email: "a@b.com" }),
-      }),
-    );
+  it("fetches /api/user/me with the bearer token", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => JSON.stringify({ token: "t", email: "a@b.com" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
 
     const result = await provider.userinfo.request({ tokens: { access_token: "abc" } });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/api\/user\/me$/),
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: "Bearer abc" }),
+      }),
+    );
     expect(result.email).toBe("a@b.com");
   });
 
