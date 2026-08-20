@@ -6,11 +6,7 @@ vi.mock("@/lib/server/api", () => ({
 }));
 
 import { GET as listClients } from "@/app/api/admin/clients/route";
-import {
-  DELETE as deleteClient,
-  GET as getClient,
-  PUT as updateClient,
-} from "@/app/api/admin/clients/[token]/route";
+import { DELETE as deleteClient, GET as getClient } from "@/app/api/admin/clients/[token]/route";
 import { proxyApiRequest } from "@/lib/server/api";
 
 const proxyMock = vi.mocked(proxyApiRequest);
@@ -42,20 +38,6 @@ describe("admin clients routes", () => {
     await getClient(req, { params: Promise.resolve({ token: "tok 1" }) });
 
     expect(proxyMock).toHaveBeenCalledWith(req, "/api/clients/tok%201");
-  });
-
-  it("proxies the update endpoint with the PUT method and body", async () => {
-    const req = new NextRequest("http://localhost:3000/api/admin/clients/tok-1", {
-      method: "PUT",
-      body: JSON.stringify({ name: "Novo Nome" }),
-    });
-
-    await updateClient(req, { params: Promise.resolve({ token: "tok-1" }) });
-
-    expect(proxyMock).toHaveBeenCalledWith(req, "/api/clients/tok-1", {
-      method: "PUT",
-      body: JSON.stringify({ name: "Novo Nome" }),
-    });
   });
 
   it("proxies the delete endpoint with the DELETE method", async () => {

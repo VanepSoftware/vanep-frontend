@@ -101,10 +101,16 @@ export default function AdminPermissionsPage() {
     setFormError(null);
   }
 
+  function knownPermissions(names: Iterable<string>): string[] {
+    if (allPermissions.length === 0) return Array.from(names);
+    const registry = new Set(allPermissions);
+    return Array.from(names).filter((name) => registry.has(name));
+  }
+
   function openEdit(bundle: Bundle) {
     setEditing(bundle);
     setFormName(bundle.name);
-    setSelected(new Set(bundle.permissions));
+    setSelected(new Set(knownPermissions(bundle.permissions)));
     setFormError(null);
   }
 
@@ -124,7 +130,8 @@ export default function AdminPermissionsPage() {
       setFormError(messages.nameRequired);
       return;
     }
-    if (selected.size === 0) {
+    const permissions = knownPermissions(selected);
+    if (permissions.length === 0) {
       setFormError(messages.permissionsRequired);
       return;
     }
@@ -132,7 +139,7 @@ export default function AdminPermissionsPage() {
     setFormError(null);
     const payload = JSON.stringify({
       name: formName.trim(),
-      permissions: Array.from(selected),
+      permissions,
     });
     const url =
       editing === "new"
