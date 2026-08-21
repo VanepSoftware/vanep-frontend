@@ -2,6 +2,7 @@ const ptBR = {
   common: {
     confirm: "Confirmar",
     cancel: "Cancelar",
+    close: "Fechar",
     loading: "Carregando...",
   },
 
@@ -178,10 +179,12 @@ const ptBR = {
     },
     clients: {
       title: "Clientes",
-      description: "Todos os clientes cadastrados na plataforma.",
+      description:
+        "Consulta e exclusão de clientes. Nome, foto, status e endereço só podem ser alterados pelo próprio cliente.",
       columns: {
         name: "Nome",
         email: "E-mail",
+        address: "Endereço",
         rating: "Avaliação",
         status: "Status",
         createdAt: "Cadastro",
@@ -191,6 +194,7 @@ const ptBR = {
       inactive: "Inativo",
       noName: "Sem nome",
       noRating: "—",
+      noAddress: "Sem endereço",
       empty: "Nenhum cliente encontrado.",
       loading: "Carregando clientes...",
       loadError: "Não foi possível carregar os clientes.",
@@ -200,16 +204,17 @@ const ptBR = {
       deleteDescription:
         "Tem certeza que deseja excluir este cliente? O registro é desativado (soft delete) e pode ser restaurado depois.",
       deleteError: "Não foi possível excluir o cliente.",
-      edit: "Editar",
-      editTitle: "Editar cliente",
+      view: "Ver",
+      viewTitle: "Detalhes do cliente",
+      viewHint:
+        "Este painel não altera o cadastro do cliente.",
       nameLabel: "Nome",
       emailLabel: "E-mail",
-      photoLabel: "Foto (URL)",
-      ratingLabel: "Avaliação (0 a 5)",
-      activeLabel: "Cliente ativo",
-      save: "Salvar",
-      editError: "Não foi possível salvar as alterações.",
-      editConflict: "E-mail já cadastrado para outro usuário.",
+      photoLabel: "Foto",
+      ratingLabel: "Avaliação",
+      statusLabel: "Status",
+      addressLabel: "Endereço",
+      createdAtLabel: "Cadastro",
       previous: "Anterior",
       next: "Próxima",
       pageInfo: "Página {page} de {total}",

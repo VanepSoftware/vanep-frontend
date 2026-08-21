@@ -1,11 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { t } from "@/lib/l10n";
 
 const messages = t("admin").clients;
+const common = t("common");
+
+type ClientAddress = {
+  zipCode?: string | null;
+  street?: string | null;
+  number?: string | null;
+  complement?: string | null;
+  neighborhood?: string | null;
+  cityName?: string | null;
+  stateUf?: string | null;
+};
 
 type Client = {
   token: string;
@@ -15,6 +26,7 @@ type Client = {
   rating: number | null;
   active: boolean;
   createdAt: string | null;
+  address?: ClientAddress | null;
 };
 
 type ClientsPage = {
@@ -49,6 +61,37 @@ function formatDate(value: string | null): string {
   return date.toLocaleDateString("pt-BR");
 }
 
+function formatZipCode(zipCode: string): string {
+  const digits = zipCode.replace(/\D/g, "");
+  if (digits.length !== 8) return zipCode;
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+}
+
+function compactAddress(address: ClientAddress | null | undefined): string {
+  if (!address) return messages.noAddress;
+  const line = [address.street, address.number].filter(Boolean).join(", ");
+  const city = [address.cityName, address.stateUf].filter(Boolean).join("/");
+  return [line, city].filter(Boolean).join(" · ") || messages.noAddress;
+}
+
+function addressLines(address: ClientAddress): string[] {
+  const street = [address.street, address.number].filter(Boolean).join(", ");
+  const city = [address.cityName, address.stateUf].filter(Boolean).join("/");
+  const zip = address.zipCode ? formatZipCode(address.zipCode) : "";
+  return [street, address.complement, address.neighborhood, city, zip].filter(
+    (part): part is string => Boolean(part),
+  );
+}
+
+function DetailRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-[7.5rem_1fr] gap-3 py-2 text-sm">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="text-foreground">{children}</dd>
+    </div>
+  );
+}
+
 export default function AdminClientsPage() {
   const [data, setData] = useState<ClientsPage | null>(null);
   const [page, setPage] = useState(0);
@@ -56,13 +99,7 @@ export default function AdminClientsPage() {
   const [error, setError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [editTarget, setEditTarget] = useState<Client | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editEmail, setEditEmail] = useState("");
-  const [editPhoto, setEditPhoto] = useState("");
-  const [editRating, setEditRating] = useState("");
-  const [editActive, setEditActive] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [viewTarget, setViewTarget] = useState<Client | null>(null);
 
   const loadClients = useCallback(async (targetPage: number) => {
     setLoading(true);
@@ -82,46 +119,6 @@ export default function AdminClientsPage() {
     void loadClients(page);
   }, [page, loadClients]);
 
-  function openEdit(client: Client) {
-    setEditTarget(client);
-    setEditName(client.name ?? "");
-    setEditEmail(client.email ?? "");
-    setEditPhoto(client.photo ?? "");
-    setEditRating(client.rating != null ? String(client.rating) : "");
-    setEditActive(client.active);
-  }
-
-  async function saveEdit(event: { preventDefault: () => void }) {
-    event.preventDefault();
-    if (!editTarget) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/admin/clients/${encodeURIComponent(editTarget.token)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: editName.trim() || null,
-          email: editEmail.trim() || null,
-          photo: editPhoto.trim() || null,
-          rating: editRating.trim() ? Number(editRating) : null,
-          active: editActive,
-        }),
-      });
-      if (!res.ok) {
-        setError(res.status === 409 ? messages.editConflict : messages.editError);
-        setEditTarget(null);
-        return;
-      }
-      setEditTarget(null);
-      await loadClients(page);
-    } catch {
-      setError(messages.editError);
-      setEditTarget(null);
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function confirmDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -131,6 +128,7 @@ export default function AdminClientsPage() {
       });
       if (!res.ok) throw new Error(`status ${res.status}`);
       setDeleteTarget(null);
+      setViewTarget(null);
       await loadClients(page);
     } catch {
       setError(messages.deleteError);
@@ -163,11 +161,12 @@ export default function AdminClientsPage() {
       )}
 
       <div className="overflow-x-auto rounded-2xl border border-[var(--border)] bg-[var(--background)]/60">
-        <table className="w-full min-w-[640px] text-left text-sm">
+        <table className="w-full min-w-[720px] text-left text-sm">
           <thead>
             <tr className="border-b border-[var(--border)] text-muted-foreground">
               <th className="px-4 py-3 font-medium">{messages.columns.name}</th>
               <th className="px-4 py-3 font-medium">{messages.columns.email}</th>
+              <th className="px-4 py-3 font-medium">{messages.columns.address}</th>
               <th className="px-4 py-3 font-medium">{messages.columns.rating}</th>
               <th className="px-4 py-3 font-medium">{messages.columns.status}</th>
               <th className="px-4 py-3 font-medium">{messages.columns.createdAt}</th>
@@ -177,14 +176,14 @@ export default function AdminClientsPage() {
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">
+                <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
                   {messages.loading}
                 </td>
               </tr>
             )}
             {!loading && (data?.content.length ?? 0) === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">
+                <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
                   {messages.empty}
                 </td>
               </tr>
@@ -199,6 +198,9 @@ export default function AdminClientsPage() {
                     {client.name ?? messages.noName}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{client.email ?? "—"}</td>
+                  <td className="max-w-[16rem] truncate px-4 py-3 text-muted-foreground">
+                    {compactAddress(client.address)}
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {client.rating != null ? Number(client.rating).toFixed(1) : messages.noRating}
                   </td>
@@ -220,10 +222,10 @@ export default function AdminClientsPage() {
                     <div className="flex justify-end gap-2">
                       <button
                         type="button"
-                        onClick={() => openEdit(client)}
+                        onClick={() => setViewTarget(client)}
                         className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-brand hover:text-brand"
                       >
-                        {messages.edit}
+                        {messages.view}
                       </button>
                       <button
                         type="button"
@@ -277,95 +279,70 @@ export default function AdminClientsPage() {
         onCancel={() => setDeleteTarget(null)}
       />
 
-      {editTarget != null && (
+      {viewTarget != null && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
           role="dialog"
           aria-modal="true"
-          aria-label={messages.editTitle}
+          aria-label={messages.viewTitle}
         >
-          <form
-            onSubmit={(event) => void saveEdit(event)}
-            className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--background)] p-6 shadow-2xl"
-          >
+          <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--background)] p-6 shadow-2xl">
             <h2 className="font-display text-lg font-bold text-foreground">
-              {messages.editTitle}
+              {messages.viewTitle}
             </h2>
+            <p className="mt-2 text-xs text-muted-foreground">{messages.viewHint}</p>
 
-            <label className="mt-4 block text-sm text-muted-foreground">
-              {messages.nameLabel}
-              <input
-                type="text"
-                value={editName}
-                onChange={(event) => setEditName(event.target.value)}
-                maxLength={255}
-                className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background-deep)] px-3 py-2 text-sm text-foreground outline-none focus:border-brand"
-              />
-            </label>
-
-            <label className="mt-4 block text-sm text-muted-foreground">
-              {messages.emailLabel}
-              <input
-                type="email"
-                value={editEmail}
-                onChange={(event) => setEditEmail(event.target.value)}
-                maxLength={255}
-                className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background-deep)] px-3 py-2 text-sm text-foreground outline-none focus:border-brand"
-              />
-            </label>
-
-            <label className="mt-4 block text-sm text-muted-foreground">
-              {messages.photoLabel}
-              <input
-                type="url"
-                value={editPhoto}
-                onChange={(event) => setEditPhoto(event.target.value)}
-                placeholder="https://..."
-                className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background-deep)] px-3 py-2 text-sm text-foreground outline-none focus:border-brand"
-              />
-            </label>
-
-            <label className="mt-4 block text-sm text-muted-foreground">
-              {messages.ratingLabel}
-              <input
-                type="number"
-                min={0}
-                max={5}
-                step={0.1}
-                value={editRating}
-                onChange={(event) => setEditRating(event.target.value)}
-                className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background-deep)] px-3 py-2 text-sm text-foreground outline-none focus:border-brand"
-              />
-            </label>
-
-            <label className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={editActive}
-                onChange={(event) => setEditActive(event.target.checked)}
-                className="h-4 w-4 accent-[var(--brand)]"
-              />
-              {messages.activeLabel}
-            </label>
+            <dl className="mt-4 divide-y divide-[var(--border)]/60">
+              <DetailRow label={messages.nameLabel}>
+                {viewTarget.name ?? messages.noName}
+              </DetailRow>
+              <DetailRow label={messages.emailLabel}>{viewTarget.email ?? "—"}</DetailRow>
+              <DetailRow label={messages.photoLabel}>
+                {viewTarget.photo ? (
+                  <a
+                    href={viewTarget.photo}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="break-all text-brand underline-offset-2 hover:underline"
+                  >
+                    {viewTarget.photo}
+                  </a>
+                ) : (
+                  "—"
+                )}
+              </DetailRow>
+              <DetailRow label={messages.ratingLabel}>
+                {viewTarget.rating != null
+                  ? Number(viewTarget.rating).toFixed(1)
+                  : messages.noRating}
+              </DetailRow>
+              <DetailRow label={messages.statusLabel}>
+                {viewTarget.active ? messages.active : messages.inactive}
+              </DetailRow>
+              <DetailRow label={messages.addressLabel}>
+                {viewTarget.address && addressLines(viewTarget.address).length > 0 ? (
+                  <span className="block whitespace-pre-line">
+                    {addressLines(viewTarget.address).join("\n")}
+                  </span>
+                ) : (
+                  messages.noAddress
+                )}
+              </DetailRow>
+              <DetailRow label={messages.createdAtLabel}>
+                {formatDate(viewTarget.createdAt)}
+              </DetailRow>
+            </dl>
 
             <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
-                onClick={() => setEditTarget(null)}
-                disabled={saving}
-                className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-foreground transition-opacity hover:opacity-80 disabled:opacity-50"
+                onClick={() => setViewTarget(null)}
+                className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-foreground transition-opacity hover:opacity-80"
               >
-                {t("common").cancel}
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
-              >
-                {saving ? t("common").loading : messages.save}
+                {common.close}
               </button>
             </div>
-          </form>
+          </div>
         </div>
       )}
     </section>
