@@ -195,14 +195,14 @@ export default function AdminPermissionsPage() {
         <button
           type="button"
           onClick={openCreate}
-          className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground transition-opacity hover:opacity-90"
+          className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-sm transition-all duration-200 hover:bg-brand-strong hover:shadow-md active:scale-[0.97] active:shadow-sm"
         >
           {messages.new}
         </button>
       </header>
 
       {error && (
-        <div className="mb-6 flex items-center justify-between rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        <div className="mb-6 flex items-center justify-between rounded-xl border border-danger-border bg-danger-soft px-4 py-3 text-sm text-danger">
           <span>{error}</span>
           <button
             type="button"
@@ -214,10 +214,10 @@ export default function AdminPermissionsPage() {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-2xl border border-[var(--border)] bg-[var(--background)]/60">
+      <div className="overflow-x-auto rounded-2xl border border-border bg-background">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead>
-            <tr className="border-b border-[var(--border)] text-muted-foreground">
+            <tr className="border-b border-border text-muted-foreground">
               <th className="px-4 py-3 font-medium">{messages.columns.name}</th>
               <th className="px-4 py-3 font-medium">{messages.columns.permissions}</th>
               <th className="px-4 py-3 font-medium">{messages.columns.createdAt}</th>
@@ -243,7 +243,7 @@ export default function AdminPermissionsPage() {
               data?.content.map((bundle) => (
                 <tr
                   key={bundle.token}
-                  className="border-b border-[var(--border)]/50 last:border-b-0"
+                  className="border-b border-border/50 transition-colors duration-150 last:border-b-0 hover:bg-background-deep"
                 >
                   <td className="px-4 py-3 font-medium text-foreground">{bundle.name}</td>
                   <td className="px-4 py-3 text-muted-foreground">
@@ -257,14 +257,14 @@ export default function AdminPermissionsPage() {
                       <button
                         type="button"
                         onClick={() => openEdit(bundle)}
-                        className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-brand hover:text-brand"
+                        className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition-all duration-200 hover:border-brand hover:bg-brand-soft hover:text-brand active:scale-[0.96]"
                       >
                         {messages.edit}
                       </button>
                       <button
                         type="button"
                         onClick={() => setDeleteTarget(bundle)}
-                        className="rounded-lg border border-red-400/40 px-3 py-1.5 text-xs font-semibold text-red-300 transition-colors hover:bg-red-500/10"
+                        className="rounded-lg border border-danger-border px-3 py-1.5 text-xs font-semibold text-danger transition-all duration-200 hover:border-danger hover:bg-danger-soft active:scale-[0.96]"
                       >
                         {messages.delete}
                       </button>
@@ -283,7 +283,7 @@ export default function AdminPermissionsPage() {
             type="button"
             disabled={loading || page === 0}
             onClick={() => setPage((current) => Math.max(0, current - 1))}
-            className="rounded-lg border border-[var(--border)] px-3 py-1.5 transition-opacity hover:opacity-80 disabled:opacity-40"
+            className="rounded-lg border border-border px-3 py-1.5 transition-all duration-200 hover:border-border-strong hover:bg-muted hover:text-foreground active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40"
           >
             {messages.previous}
           </button>
@@ -296,7 +296,7 @@ export default function AdminPermissionsPage() {
             type="button"
             disabled={loading || page + 1 >= totalPages}
             onClick={() => setPage((current) => current + 1)}
-            className="rounded-lg border border-[var(--border)] px-3 py-1.5 transition-opacity hover:opacity-80 disabled:opacity-40"
+            className="rounded-lg border border-border px-3 py-1.5 transition-all duration-200 hover:border-border-strong hover:bg-muted hover:text-foreground active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40"
           >
             {messages.next}
           </button>
@@ -315,14 +315,14 @@ export default function AdminPermissionsPage() {
 
       {editing != null && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 p-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-label={editing === "new" ? messages.createTitle : messages.editTitle}
         >
           <form
             onSubmit={(event) => void saveBundle(event)}
-            className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl border border-[var(--border)] bg-[var(--background)] p-6 shadow-2xl"
+            className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl border border-border bg-background p-6 shadow-2xl"
           >
             <h2 className="font-display text-lg font-bold text-foreground">
               {editing === "new" ? messages.createTitle : messages.editTitle}
@@ -335,7 +335,7 @@ export default function AdminPermissionsPage() {
                 value={formName}
                 onChange={(event) => setFormName(event.target.value)}
                 maxLength={64}
-                className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background-deep)] px-3 py-2 text-sm text-foreground outline-none focus:border-brand"
+                className="mt-1 w-full rounded-lg border border-border bg-[var(--background-deep)] px-3 py-2 text-sm text-foreground outline-none focus:border-brand"
               />
             </label>
 
@@ -362,7 +362,7 @@ export default function AdminPermissionsPage() {
               </div>
             </div>
 
-            <div className="mt-2 grid flex-1 grid-cols-1 gap-1 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--background-deep)] p-3 sm:grid-cols-2">
+            <div className="mt-2 grid flex-1 grid-cols-1 gap-1 overflow-y-auto rounded-lg border border-border bg-[var(--background-deep)] p-3 sm:grid-cols-2">
               {allPermissions.map((permission) => (
                 <label
                   key={permission}
@@ -379,21 +379,21 @@ export default function AdminPermissionsPage() {
               ))}
             </div>
 
-            {formError && <p className="mt-3 text-sm text-red-300">{formError}</p>}
+            {formError && <p className="mt-3 text-sm text-danger">{formError}</p>}
 
             <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setEditing(null)}
                 disabled={saving}
-                className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-foreground transition-opacity hover:opacity-80 disabled:opacity-50"
+                className="rounded-lg border border-border px-4 py-2 text-sm text-foreground transition-all duration-200 hover:border-border-strong hover:bg-muted active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50"
               >
                 {t("common").cancel}
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+                className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-sm transition-all duration-200 hover:bg-brand-strong hover:shadow-md active:scale-[0.97] active:shadow-sm disabled:pointer-events-none disabled:opacity-50"
               >
                 {saving ? t("common").loading : messages.save}
               </button>

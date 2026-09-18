@@ -22,15 +22,15 @@ const display = Poppins({
 
 export const metadata: Metadata = {
   title: {
-    default: "Vanep — O sistema operacional do transporte escolar",
+    default: "Vanep — A digitalização da van escolar em um aplicativo",
     template: "%s | Vanep"
   },
   description:
-    "Vanep conecta responsáveis a transportadores escolares verificados: contratos digitais, rastreamento em tempo real, notificações a cada etapa e gestão completa para o motorista.",
+    "O Vanep digitaliza a van escolar em um app: motoristas verificados, contrato digital, rastreamento em tempo real e notificação a cada etapa do trajeto.",
   openGraph: {
-    title: "Vanep — O sistema operacional do transporte escolar",
+    title: "Vanep — A digitalização da van escolar em um aplicativo",
     description:
-      "Encontre motoristas verificados, acompanhe a van em tempo real e tenha contratos digitais. Tudo em um só lugar.",
+      "Encontre motoristas verificados, acompanhe a van em tempo real e tenha contratos digitais. Tudo em um só app.",
     type: "website"
   }
 };
@@ -42,7 +42,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className={`${geistSans.variable} ${geistMono.variable} ${display.variable} h-full`}>
-      <body className="min-h-full flex flex-col text-foreground antialiased">
+      <body className="min-h-full flex flex-col bg-background text-foreground antialiased">
         <Providers>
           <ProfileButton />
           {children}
