@@ -148,7 +148,7 @@ export default function AdminClientsPage() {
       </header>
 
       {error && (
-        <div className="mb-6 flex items-center justify-between rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        <div className="mb-6 flex items-center justify-between rounded-xl border border-danger-border bg-danger-soft px-4 py-3 text-sm text-danger">
           <span>{error}</span>
           <button
             type="button"
@@ -160,10 +160,10 @@ export default function AdminClientsPage() {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-2xl border border-[var(--border)] bg-[var(--background)]/60">
+      <div className="overflow-x-auto rounded-2xl border border-border bg-background">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead>
-            <tr className="border-b border-[var(--border)] text-muted-foreground">
+            <tr className="border-b border-border text-muted-foreground">
               <th className="px-4 py-3 font-medium">{messages.columns.name}</th>
               <th className="px-4 py-3 font-medium">{messages.columns.email}</th>
               <th className="px-4 py-3 font-medium">{messages.columns.address}</th>
@@ -192,7 +192,7 @@ export default function AdminClientsPage() {
               data?.content.map((client) => (
                 <tr
                   key={client.token}
-                  className="border-b border-[var(--border)]/50 last:border-b-0"
+                  className="border-b border-border/50 transition-colors duration-150 last:border-b-0 hover:bg-background-deep"
                 >
                   <td className="px-4 py-3 font-medium text-foreground">
                     {client.name ?? messages.noName}
@@ -208,7 +208,7 @@ export default function AdminClientsPage() {
                     <span
                       className={
                         client.active
-                          ? "rounded-full bg-brand/20 px-2.5 py-1 text-xs font-semibold text-brand"
+                          ? "rounded-full bg-brand-soft px-2.5 py-1 text-xs font-semibold text-brand"
                           : "rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground"
                       }
                     >
@@ -223,14 +223,14 @@ export default function AdminClientsPage() {
                       <button
                         type="button"
                         onClick={() => setViewTarget(client)}
-                        className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-brand hover:text-brand"
+                        className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition-all duration-200 hover:border-brand hover:bg-brand-soft hover:text-brand active:scale-[0.96]"
                       >
                         {messages.view}
                       </button>
                       <button
                         type="button"
                         onClick={() => setDeleteTarget(client)}
-                        className="rounded-lg border border-red-400/40 px-3 py-1.5 text-xs font-semibold text-red-300 transition-colors hover:bg-red-500/10"
+                        className="rounded-lg border border-danger-border px-3 py-1.5 text-xs font-semibold text-danger transition-all duration-200 hover:border-danger hover:bg-danger-soft active:scale-[0.96]"
                       >
                         {messages.delete}
                       </button>
@@ -249,7 +249,7 @@ export default function AdminClientsPage() {
             type="button"
             disabled={loading || page === 0}
             onClick={() => setPage((current) => Math.max(0, current - 1))}
-            className="rounded-lg border border-[var(--border)] px-3 py-1.5 transition-opacity hover:opacity-80 disabled:opacity-40"
+            className="rounded-lg border border-border px-3 py-1.5 transition-all duration-200 hover:border-border-strong hover:bg-muted hover:text-foreground active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40"
           >
             {messages.previous}
           </button>
@@ -262,7 +262,7 @@ export default function AdminClientsPage() {
             type="button"
             disabled={loading || page + 1 >= totalPages}
             onClick={() => setPage((current) => current + 1)}
-            className="rounded-lg border border-[var(--border)] px-3 py-1.5 transition-opacity hover:opacity-80 disabled:opacity-40"
+            className="rounded-lg border border-border px-3 py-1.5 transition-all duration-200 hover:border-border-strong hover:bg-muted hover:text-foreground active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40"
           >
             {messages.next}
           </button>
@@ -281,18 +281,18 @@ export default function AdminClientsPage() {
 
       {viewTarget != null && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 p-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-label={messages.viewTitle}
         >
-          <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--background)] p-6 shadow-2xl">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-background p-6 shadow-2xl">
             <h2 className="font-display text-lg font-bold text-foreground">
               {messages.viewTitle}
             </h2>
             <p className="mt-2 text-xs text-muted-foreground">{messages.viewHint}</p>
 
-            <dl className="mt-4 divide-y divide-[var(--border)]/60">
+            <dl className="mt-4 divide-y divide-border">
               <DetailRow label={messages.nameLabel}>
                 {viewTarget.name ?? messages.noName}
               </DetailRow>
@@ -337,7 +337,7 @@ export default function AdminClientsPage() {
               <button
                 type="button"
                 onClick={() => setViewTarget(null)}
-                className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-foreground transition-opacity hover:opacity-80"
+                className="rounded-lg border border-border px-4 py-2 text-sm text-foreground transition-all duration-200 hover:border-border-strong hover:bg-muted active:scale-[0.97]"
               >
                 {common.close}
               </button>

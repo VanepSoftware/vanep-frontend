@@ -20,7 +20,7 @@ export function ProfileButton() {
         aria-label="Entrar"
         title="Entrar"
         onClick={() => signIn("vanep", { callbackUrl: "/" })}
-        className="fixed right-4 top-3 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] text-foreground transition-opacity hover:opacity-80"
+        className="fixed right-4 top-3 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-border-strong bg-background text-foreground shadow-sm transition-all duration-200 hover:scale-105 hover:border-brand hover:text-brand active:scale-95"
       >
         <ProfileIcon />
       </button>
@@ -36,17 +36,17 @@ export function ProfileButton() {
         type="button"
         aria-label="Abrir menu da conta"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-10 w-10 items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-foreground transition-opacity hover:opacity-80"
+        className="flex h-10 w-10 items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-foreground shadow-sm transition-all duration-200 hover:scale-105 hover:bg-brand-strong active:scale-95"
       >
         {initial}
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--background)] shadow-lg">
-          <div className="border-b border-[var(--border)] px-4 py-3">
+        <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border border-border bg-background shadow-[0_16px_40px_-18px_rgba(13,27,42,0.4)]">
+          <div className="border-b border-border px-4 py-3">
             <p className="truncate text-sm font-medium text-foreground">{name}</p>
             {session.user?.email && (
-              <p className="truncate text-xs text-[var(--muted-foreground)]">{session.user.email}</p>
+              <p className="truncate text-xs text-muted-foreground">{session.user.email}</p>
             )}
           </div>
           <button
@@ -55,7 +55,7 @@ export function ProfileButton() {
               await signOut({ redirect: false });
               window.location.href = "/api/auth/sso-logout";
             }}
-            className="block w-full px-4 py-3 text-left text-sm text-foreground transition-colors hover:bg-[var(--muted)]"
+            className="block w-full px-4 py-3 text-left text-sm text-foreground transition-colors duration-200 hover:bg-muted active:bg-border"
           >
             Sair
           </button>

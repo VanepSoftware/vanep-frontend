@@ -1,20 +1,34 @@
 @import "tailwindcss";
 
 :root {
-  /* Vanep brand palette — navy gradient + teal van accent (from the logo) */
-  --background: #0a2949;
-  --background-deep: #071d37;
-  --background-soft: #0f3e6e;
-  --foreground: #eaf4fb;
+  /* Superfícies — tema claro, fundo branco */
+  --background: #ffffff;
+  --background-deep: #f7f9fc;
+  --background-soft: #eef4fa;
+  --foreground: #0d1b2a;
 
-  --muted: #103355;
-  --muted-foreground: #9bc0dc;
+  --muted: #f1f5f9;
+  --muted-foreground: #5b6b7c;
 
-  --border: #1d4a73;
+  --border: #e3e9f0;
+  --border-strong: #cfd9e4;
 
-  --brand: #5cbcd6;
-  --brand-strong: #45a9c6;
-  --brand-foreground: #07203a;
+  /* Marca — azul institucional (logo) com o teal da van como apoio */
+  --brand: #0b5ea9;
+  --brand-strong: #084a86;
+  --brand-soft: #e9f2fb;
+  --brand-foreground: #ffffff;
+  --accent: #2f9fc4;
+
+  /* Amarelo da faixa "ESCOLAR" — destaque pontual */
+  --highlight: #f2b705;
+
+  --danger: #c0392b;
+  --danger-soft: #fdecea;
+  --danger-border: #f3c4bf;
+
+  --success: #167a4c;
+  --success-soft: #e7f5ee;
 }
 
 @theme inline {
@@ -25,9 +39,18 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-brand: var(--brand);
   --color-brand-strong: var(--brand-strong);
+  --color-brand-soft: var(--brand-soft);
   --color-brand-foreground: var(--brand-foreground);
+  --color-accent: var(--accent);
+  --color-highlight: var(--highlight);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-border: var(--danger-border);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-display: var(--font-display);
@@ -48,15 +71,10 @@ html {
 body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
-  background-color: var(--background-deep);
-  background-image:
-    radial-gradient(1100px 760px at 72% 38%, rgba(92, 188, 214, 0.20), transparent 60%),
-    radial-gradient(900px 700px at 8% 88%, rgba(69, 169, 198, 0.14), transparent 55%),
-    linear-gradient(155deg, #071d37 0%, #0a2c50 50%, #103e6e 100%);
-  background-attachment: fixed;
+  background-color: var(--background);
 }
 
-/* Wordmark — the "vanep." logotype */
+/* Wordmark — o logotipo "vanep." */
 .wordmark {
   font-family: var(--font-display), var(--font-geist-sans), sans-serif;
   font-weight: 800;
@@ -64,10 +82,10 @@ body {
 }
 
 .wordmark-dot {
-  color: var(--brand);
+  color: var(--accent);
 }
 
-/* Pixel-trail accent echoing the logo's motion dots */
+/* Rastro de pixels que ecoa o movimento do logo */
 @keyframes pixel-drift {
   0%, 100% { transform: translateX(0); opacity: 0.9; }
   50% { transform: translateX(-4px); opacity: 0.5; }
@@ -84,4 +102,50 @@ body {
 
 .animate-rise {
   animation: rise 0.7s ease-out both;
+}
+
+/* Deriva lenta do brilho de fundo do bloco de download */
+@keyframes glow-drift {
+  0%, 100% { transform: translate3d(-3%, 0, 0) scale(1); }
+  50% { transform: translate3d(3%, 2%, 0) scale(1.08); }
+}
+
+.animate-glow {
+  animation: glow-drift 14s ease-in-out infinite;
+}
+
+/*
+ * Realce de foco por teclado, aplicado a tudo que é clicável.
+ * Fica invisível para quem usa mouse e visível para quem navega por Tab.
+ */
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+
+/* Dentro do bloco azul o contorno precisa ser claro para aparecer */
+.on-brand a:focus-visible,
+.on-brand button:focus-visible {
+  outline-color: var(--brand-foreground);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .animate-pixel,
+  .animate-rise,
+  .animate-glow {
+    animation: none;
+  }
+
+  /* Some com os deslocamentos de hover/clique, mantendo cor e borda */
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
 }
