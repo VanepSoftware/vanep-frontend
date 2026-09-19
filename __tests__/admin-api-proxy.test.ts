@@ -5,13 +5,14 @@ import { proxyApiRequest } from "@/lib/server/api";
 
 vi.mock("next-auth/jwt", () => ({
   getToken: vi.fn(),
+  encode: vi.fn(async () => "re-encoded-session"),
 }));
 
 vi.mock("@/lib/server/oauth-session", () => ({
   maybeRefreshAccessToken: vi.fn(async (token: unknown) => ({ token, refreshed: false })),
 }));
 
-import { getToken } from "next-auth/jwt";
+import { encode, getToken } from "next-auth/jwt";
 import { maybeRefreshAccessToken } from "@/lib/server/oauth-session";
 
 const getTokenMock = vi.mocked(getToken);
@@ -24,16 +25,24 @@ function request(path = "/api/admin/clients"): NextRequest {
 describe("proxyApiRequest", () => {
   const fetchMock = vi.fn();
   let previousAuthUrl: string | undefined;
+  let previousFrontendUrl: string | undefined;
+  let previousSecret: string | undefined;
 
   beforeEach(() => {
     previousAuthUrl = process.env.AUTH_URL;
+    previousFrontendUrl = process.env.NEXTAUTH_URL;
+    previousSecret = process.env.AUTH_SECRET;
     process.env.AUTH_URL = "http://backend.test";
+    process.env.NEXTAUTH_URL = "http://localhost:3000";
+    process.env.AUTH_SECRET = "test-secret";
     vi.stubGlobal("fetch", fetchMock);
     fetchMock.mockReset();
   });
 
   afterEach(() => {
     process.env.AUTH_URL = previousAuthUrl;
+    process.env.NEXTAUTH_URL = previousFrontendUrl;
+    process.env.AUTH_SECRET = previousSecret;
     vi.unstubAllGlobals();
     vi.clearAllMocks();
   });
@@ -114,5 +123,50 @@ describe("proxyApiRequest", () => {
         headers: expect.objectContaining({ "Content-Type": "application/json" }),
       }),
     );
+  });
+
+  it("writes the rotated session back to the cookie after a refresh", async () => {
+    getTokenMock.mockResolvedValueOnce({ accessToken: "expired", refreshToken: "burned" });
+    refreshMock.mockResolvedValueOnce({
+      token: { accessToken: "fresh-access", refreshToken: "rotated-refresh" },
+      refreshed: true,
+    });
+    fetchMock.mockResolvedValueOnce(new Response("{}", { status: 200 }));
+
+    const response = await proxyApiRequest(request(), "/api/clients");
+
+    expect(encode).toHaveBeenCalledWith(
+      expect.objectContaining({
+        token: { accessToken: "fresh-access", refreshToken: "rotated-refresh" },
+      }),
+    );
+    const cookie = response.cookies.get("next-auth.session-token");
+    expect(cookie?.value).toBe("re-encoded-session");
+    expect(cookie?.httpOnly).toBe(true);
+    expect(cookie?.path).toBe("/");
+  });
+
+  it("leaves the cookie untouched when no refresh happened", async () => {
+    getTokenMock.mockResolvedValueOnce({ accessToken: "still-valid" });
+    fetchMock.mockResolvedValueOnce(new Response("{}", { status: 200 }));
+
+    const response = await proxyApiRequest(request(), "/api/clients");
+
+    expect(encode).not.toHaveBeenCalled();
+    expect(response.cookies.get("next-auth.session-token")).toBeUndefined();
+  });
+
+  it("still saves the rotated session when the backend answers an error", async () => {
+    getTokenMock.mockResolvedValueOnce({ accessToken: "expired", refreshToken: "burned" });
+    refreshMock.mockResolvedValueOnce({
+      token: { accessToken: "fresh-access", refreshToken: "rotated-refresh" },
+      refreshed: true,
+    });
+    fetchMock.mockResolvedValueOnce(new Response("{}", { status: 500 }));
+
+    const response = await proxyApiRequest(request(), "/api/clients");
+
+    expect(response.status).toBe(500);
+    expect(response.cookies.get("next-auth.session-token")?.value).toBe("re-encoded-session");
   });
 });

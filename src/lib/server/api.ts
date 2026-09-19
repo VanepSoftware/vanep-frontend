@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { maybeRefreshAccessToken } from "@/lib/server/oauth-session";
+import { persistSession } from "@/lib/server/session-cookie";
 
 function apiBaseUrl(): string {
   return process.env.AUTH_URL ?? "";
@@ -18,7 +19,7 @@ export async function proxyApiRequest(
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const { token: fresh } = await maybeRefreshAccessToken(token);
+  const { token: fresh, refreshed } = await maybeRefreshAccessToken(token);
   if (!fresh.accessToken) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -34,15 +35,18 @@ export async function proxyApiRequest(
     cache: "no-store",
   });
 
-  if (response.status === 204) {
-    return new NextResponse(null, { status: 204 });
-  }
+  const proxied =
+    response.status === 204
+      ? new NextResponse(null, { status: 204 })
+      : new NextResponse((await response.text()) || null, {
+          status: response.status,
+          headers: {
+            "Content-Type": response.headers.get("Content-Type") ?? "application/json",
+          },
+        });
 
-  const body = await response.text();
-  return new NextResponse(body || null, {
-    status: response.status,
-    headers: {
-      "Content-Type": response.headers.get("Content-Type") ?? "application/json",
-    },
-  });
+  if (refreshed) {
+    await persistSession(req, proxied, fresh);
+  }
+  return proxied;
 }
