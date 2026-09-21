@@ -45,47 +45,50 @@ export async function refreshAccessToken(token: JWT): Promise<JWT> {
     return inFlight;
   }
 
-  const refreshPromise = (async (): Promise<JWT> => {
-    try {
-      const body = new URLSearchParams({
-        grant_type: "refresh_token",
-        refresh_token: refreshToken,
-        client_id: oauthClientId(),
-        client_secret: oauthClientSecret(),
-      });
-
-      const response = await fetch(`${authBaseUrl()}/oauth2/token`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          Accept: "application/json",
-        },
-        body,
-      });
-
-      if (!response.ok) {
-        return { ...token, accessToken: undefined, refreshToken: undefined };
-      }
-
-      const data = (await response.json()) as {
-        access_token?: string;
-        refresh_token?: string;
-      };
-
-      return {
-        ...token,
-        accessToken: data.access_token ?? token.accessToken,
-        refreshToken: data.refresh_token ?? token.refreshToken,
-      };
-    } catch {
-      return { ...token, accessToken: undefined, refreshToken: undefined };
-    } finally {
-      refreshInFlightByToken.delete(refreshToken);
-    }
-  })();
-
+  const refreshPromise = exchangeRefreshToken(token, refreshToken);
+  // The cleanup has to be attached after the map entry exists. Registering it inside the
+  // exchange would let a synchronous throw delete the entry before this line adds it, leaving
+  // a settled promise with cleared tokens cached forever under this refresh token.
   refreshInFlightByToken.set(refreshToken, refreshPromise);
+  void refreshPromise.finally(() => refreshInFlightByToken.delete(refreshToken));
   return refreshPromise;
+}
+
+async function exchangeRefreshToken(token: JWT, refreshToken: string): Promise<JWT> {
+  try {
+    const body = new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+      client_id: oauthClientId(),
+      client_secret: oauthClientSecret(),
+    });
+
+    const response = await fetch(`${authBaseUrl()}/oauth2/token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      },
+      body,
+    });
+
+    if (!response.ok) {
+      return { ...token, accessToken: undefined, refreshToken: undefined };
+    }
+
+    const data = (await response.json()) as {
+      access_token?: string;
+      refresh_token?: string;
+    };
+
+    return {
+      ...token,
+      accessToken: data.access_token ?? token.accessToken,
+      refreshToken: data.refresh_token ?? token.refreshToken,
+    };
+  } catch {
+    return { ...token, accessToken: undefined, refreshToken: undefined };
+  }
 }
 
 export async function revokeToken(

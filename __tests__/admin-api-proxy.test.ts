@@ -129,6 +129,30 @@ describe("proxyApiRequest", () => {
     expect(response.cookies.get("next-auth.session-token")).toBeUndefined();
   });
 
+  it("defaults to json and a null body when the backend sends neither", async () => {
+    getTokenMock.mockResolvedValueOnce({ accessToken: "the-token" });
+    fetchMock.mockResolvedValueOnce({
+      status: 200,
+      text: async () => "",
+      headers: { get: () => null },
+    });
+
+    const response = await proxyApiRequest(request(), "/api/clients");
+
+    expect(response.headers.get("Content-Type")).toBe("application/json");
+    expect(await response.text()).toBe("");
+  });
+
+  it("targets the backend base url from the environment", async () => {
+    delete process.env.AUTH_URL;
+    getTokenMock.mockResolvedValueOnce({ accessToken: "the-token" });
+    fetchMock.mockResolvedValueOnce(new Response("{}", { status: 200 }));
+
+    await proxyApiRequest(request(), "/api/clients");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/clients", expect.anything());
+  });
+
   it("sets the json content type when the request has a body", async () => {
     getTokenMock.mockResolvedValueOnce({ accessToken: "the-token" });
     fetchMock.mockResolvedValueOnce(new Response("{}", { status: 200 }));

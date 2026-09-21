@@ -5,6 +5,8 @@ import {
   maybeRefreshAccessToken,
   refreshAccessToken,
   revokeToken,
+  sessionCookieName,
+  sessionSecret,
 } from "@/lib/server/oauth-session";
 
 function makeJwt(exp: number): string {
@@ -146,7 +148,110 @@ describe("revokeToken", () => {
   });
 });
 
+describe("client authentication", () => {
+  afterEach(() => {
+    process.env.AUTH_OAUTH_CLIENT_SECRET = "test-web-client-secret";
+    vi.restoreAllMocks();
+  });
+
+  it("refuses to refresh without the client secret", async () => {
+    process.env.AUTH_URL = "http://backend";
+    process.env.AUTH_OAUTH_CLIENT_ID = "vanep-frontend";
+    delete process.env.AUTH_OAUTH_CLIENT_SECRET;
+    vi.stubGlobal("fetch", vi.fn());
+
+    const result = await refreshAccessToken({ accessToken: "a", refreshToken: "r" });
+
+    expect(result.accessToken).toBeUndefined();
+    expect(result.refreshToken).toBeUndefined();
+  });
+
+  it("does not cache the failure against the refresh token", async () => {
+    process.env.AUTH_URL = "http://backend";
+    process.env.AUTH_OAUTH_CLIENT_ID = "vanep-frontend";
+    delete process.env.AUTH_OAUTH_CLIENT_SECRET;
+    vi.stubGlobal("fetch", vi.fn());
+
+    await refreshAccessToken({ refreshToken: "poisonable" });
+
+    process.env.AUTH_OAUTH_CLIENT_SECRET = "test-web-client-secret";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ access_token: "recovered" }) }),
+    );
+
+    const result = await refreshAccessToken({ refreshToken: "poisonable" });
+
+    expect(result.accessToken).toBe("recovered");
+  });
+
+  it("swallows the missing secret on revoke", async () => {
+    delete process.env.AUTH_OAUTH_CLIENT_SECRET;
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(revokeToken("t", "refresh_token")).resolves.toBeUndefined();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("sessionCookieName", () => {
+  const previous = process.env.NEXTAUTH_URL;
+  afterEach(() => {
+    process.env.NEXTAUTH_URL = previous;
+  });
+
+  it("uses the secure prefix behind https", () => {
+    process.env.NEXTAUTH_URL = "https://www.vanep.com.br";
+    expect(sessionCookieName()).toBe("__Secure-next-auth.session-token");
+  });
+
+  it("drops the prefix on http", () => {
+    process.env.NEXTAUTH_URL = "http://localhost:3000";
+    expect(sessionCookieName()).toBe("next-auth.session-token");
+  });
+
+  it("drops the prefix when the url is unset", () => {
+    delete process.env.NEXTAUTH_URL;
+    expect(sessionCookieName()).toBe("next-auth.session-token");
+  });
+});
+
+describe("sessionSecret", () => {
+  const previousAuth = process.env.AUTH_SECRET;
+  const previousNextAuth = process.env.NEXTAUTH_SECRET;
+
+  afterEach(() => {
+    process.env.AUTH_SECRET = previousAuth;
+    process.env.NEXTAUTH_SECRET = previousNextAuth;
+  });
+
+  it("prefers AUTH_SECRET", () => {
+    process.env.AUTH_SECRET = "primary";
+    process.env.NEXTAUTH_SECRET = "legacy";
+    expect(sessionSecret()).toBe("primary");
+  });
+
+  it("falls back to NEXTAUTH_SECRET", () => {
+    delete process.env.AUTH_SECRET;
+    process.env.NEXTAUTH_SECRET = "legacy";
+    expect(sessionSecret()).toBe("legacy");
+  });
+
+  it("throws when neither is set", () => {
+    delete process.env.AUTH_SECRET;
+    delete process.env.NEXTAUTH_SECRET;
+    expect(() => sessionSecret()).toThrow(/AUTH_SECRET/);
+  });
+});
+
 describe("maybeRefreshAccessToken", () => {
+  beforeEach(() => {
+    process.env.AUTH_URL = "http://backend";
+    process.env.AUTH_OAUTH_CLIENT_ID = "vanep-frontend";
+    process.env.AUTH_OAUTH_CLIENT_SECRET = "test-web-client-secret";
+  });
+
   afterEach(() => vi.restoreAllMocks());
 
   it("keeps a token that is still valid", async () => {
