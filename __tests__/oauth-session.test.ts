@@ -28,6 +28,7 @@ describe("refreshAccessToken", () => {
   beforeEach(() => {
     process.env.AUTH_URL = "http://backend";
     process.env.AUTH_OAUTH_CLIENT_ID = "vanep-frontend";
+    process.env.AUTH_OAUTH_CLIENT_SECRET = "test-web-client-secret";
   });
 
   afterEach(() => {
@@ -52,6 +53,34 @@ describe("refreshAccessToken", () => {
 
     expect(result.accessToken).toBe("new-access");
     expect(result.refreshToken).toBe("new-refresh");
+  });
+
+  it("authenticates the client so the server issues a refresh token", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ access_token: "new-access" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await refreshAccessToken({ refreshToken: "old-refresh" });
+
+    const body = fetchMock.mock.calls[0][1].body as URLSearchParams;
+    expect(body.get("client_id")).toBe("vanep-frontend");
+    expect(body.get("client_secret")).toBe("test-web-client-secret");
+  });
+
+  it("keeps the previous refresh token when the server reuses it", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ access_token: "new-access" }),
+      }),
+    );
+
+    const result = await refreshAccessToken({ refreshToken: "kept" });
+
+    expect(result.refreshToken).toBe("kept");
   });
 
   it("clears tokens when the refresh fails", async () => {
@@ -91,6 +120,7 @@ describe("revokeToken", () => {
   beforeEach(() => {
     process.env.AUTH_URL = "http://backend";
     process.env.AUTH_OAUTH_CLIENT_ID = "vanep-frontend";
+    process.env.AUTH_OAUTH_CLIENT_SECRET = "test-web-client-secret";
   });
 
   afterEach(() => vi.restoreAllMocks());

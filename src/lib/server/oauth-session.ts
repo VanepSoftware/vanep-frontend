@@ -8,6 +8,22 @@ function authBaseUrl(): string {
   return process.env.AUTH_URL ?? "";
 }
 
+function oauthClientId(): string {
+  return process.env.AUTH_OAUTH_CLIENT_ID ?? "";
+}
+
+function oauthClientSecret(): string {
+  const secret = process.env.AUTH_OAUTH_CLIENT_SECRET;
+  if (!secret) {
+    throw new Error(
+      "AUTH_OAUTH_CLIENT_SECRET is not set. The authorization server only issues refresh " +
+        "tokens to a client that authenticates, so without it every session dies at the " +
+        "access token TTL.",
+    );
+  }
+  return secret;
+}
+
 export function getAccessTokenExp(accessToken: string): number | undefined {
   try {
     const payload = JSON.parse(Buffer.from(accessToken.split(".")[1], "base64url").toString());
@@ -34,7 +50,8 @@ export async function refreshAccessToken(token: JWT): Promise<JWT> {
       const body = new URLSearchParams({
         grant_type: "refresh_token",
         refresh_token: refreshToken,
-        client_id: process.env.AUTH_OAUTH_CLIENT_ID ?? "",
+        client_id: oauthClientId(),
+        client_secret: oauthClientSecret(),
       });
 
       const response = await fetch(`${authBaseUrl()}/oauth2/token`, {
@@ -79,7 +96,8 @@ export async function revokeToken(
     const body = new URLSearchParams({
       token,
       token_type_hint: tokenTypeHint,
-      client_id: process.env.AUTH_OAUTH_CLIENT_ID ?? "",
+      client_id: oauthClientId(),
+      client_secret: oauthClientSecret(),
     });
     await fetch(`${authBaseUrl()}/oauth2/revoke`, {
       method: "POST",
@@ -89,6 +107,24 @@ export async function revokeToken(
   } catch {
     
   }
+}
+
+/**
+ * `getToken()` reads the session cookie directly, so a refresh done inside a route handler never
+ * reaches the `jwt` callback that would persist it. Re-issuing the cookie here is what keeps the
+ * next request from starting over with the tokens this one already replaced.
+ */
+export function sessionCookieName(): string {
+  const useSecureCookies = (process.env.NEXTAUTH_URL ?? "").startsWith("https://");
+  return useSecureCookies ? "__Secure-next-auth.session-token" : "next-auth.session-token";
+}
+
+export function sessionSecret(): string {
+  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+  if (!secret) {
+    throw new Error("AUTH_SECRET (or NEXTAUTH_SECRET) is not set.");
+  }
+  return secret;
 }
 
 export async function maybeRefreshAccessToken(

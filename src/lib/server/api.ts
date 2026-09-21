@@ -1,11 +1,36 @@
-import { getToken } from "next-auth/jwt";
+import { encode, getToken } from "next-auth/jwt";
+import type { JWT } from "next-auth/jwt";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { maybeRefreshAccessToken } from "@/lib/server/oauth-session";
+import {
+  maybeRefreshAccessToken,
+  sessionCookieName,
+  sessionSecret,
+} from "@/lib/server/oauth-session";
+
+const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
 function apiBaseUrl(): string {
   return process.env.AUTH_URL ?? "";
+}
+
+async function persistSession(response: NextResponse, token: JWT): Promise<NextResponse> {
+  const encoded = await encode({
+    token,
+    secret: sessionSecret(),
+    maxAge: SESSION_MAX_AGE_SECONDS,
+  });
+  response.cookies.set({
+    name: sessionCookieName(),
+    value: encoded,
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    secure: sessionCookieName().startsWith("__Secure-"),
+    maxAge: SESSION_MAX_AGE_SECONDS,
+  });
+  return response;
 }
 
 export async function proxyApiRequest(
@@ -18,7 +43,7 @@ export async function proxyApiRequest(
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const { token: fresh } = await maybeRefreshAccessToken(token);
+  const { token: fresh, refreshed } = await maybeRefreshAccessToken(token);
   if (!fresh.accessToken) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -34,15 +59,15 @@ export async function proxyApiRequest(
     cache: "no-store",
   });
 
-  if (response.status === 204) {
-    return new NextResponse(null, { status: 204 });
-  }
+  const proxied =
+    response.status === 204
+      ? new NextResponse(null, { status: 204 })
+      : new NextResponse((await response.text()) || null, {
+          status: response.status,
+          headers: {
+            "Content-Type": response.headers.get("Content-Type") ?? "application/json",
+          },
+        });
 
-  const body = await response.text();
-  return new NextResponse(body || null, {
-    status: response.status,
-    headers: {
-      "Content-Type": response.headers.get("Content-Type") ?? "application/json",
-    },
-  });
+  return refreshed ? persistSession(proxied, fresh) : proxied;
 }
