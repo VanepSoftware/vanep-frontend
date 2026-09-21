@@ -5,17 +5,21 @@ import { proxyApiRequest } from "@/lib/server/api";
 
 vi.mock("next-auth/jwt", () => ({
   getToken: vi.fn(),
+  encode: vi.fn(async () => "re-encoded-session"),
 }));
 
 vi.mock("@/lib/server/oauth-session", () => ({
   maybeRefreshAccessToken: vi.fn(async (token: unknown) => ({ token, refreshed: false })),
+  sessionCookieName: () => "next-auth.session-token",
+  sessionSecret: () => "test-secret",
 }));
 
-import { getToken } from "next-auth/jwt";
+import { encode, getToken } from "next-auth/jwt";
 import { maybeRefreshAccessToken } from "@/lib/server/oauth-session";
 
 const getTokenMock = vi.mocked(getToken);
 const refreshMock = vi.mocked(maybeRefreshAccessToken);
+const encodeMock = vi.mocked(encode);
 
 function request(path = "/api/admin/clients"): NextRequest {
   return new NextRequest(`http://localhost:3000${path}`);
@@ -97,6 +101,56 @@ describe("proxyApiRequest", () => {
 
     expect(response.status).toBe(204);
     expect(await response.text()).toBe("");
+  });
+
+  it("re-issues the session cookie when the access token was refreshed", async () => {
+    getTokenMock.mockResolvedValueOnce({ accessToken: "expired", refreshToken: "r" });
+    refreshMock.mockResolvedValueOnce({
+      token: { accessToken: "fresh", refreshToken: "r" },
+      refreshed: true,
+    });
+    fetchMock.mockResolvedValueOnce(new Response("{}", { status: 200 }));
+
+    const response = await proxyApiRequest(request(), "/api/clients");
+
+    expect(encodeMock).toHaveBeenCalledWith(
+      expect.objectContaining({ token: { accessToken: "fresh", refreshToken: "r" } }),
+    );
+    expect(response.cookies.get("next-auth.session-token")?.value).toBe("re-encoded-session");
+  });
+
+  it("leaves the session cookie alone when nothing was refreshed", async () => {
+    getTokenMock.mockResolvedValueOnce({ accessToken: "still-valid" });
+    fetchMock.mockResolvedValueOnce(new Response("{}", { status: 200 }));
+
+    const response = await proxyApiRequest(request(), "/api/clients");
+
+    expect(encodeMock).not.toHaveBeenCalled();
+    expect(response.cookies.get("next-auth.session-token")).toBeUndefined();
+  });
+
+  it("defaults to json and a null body when the backend sends neither", async () => {
+    getTokenMock.mockResolvedValueOnce({ accessToken: "the-token" });
+    fetchMock.mockResolvedValueOnce({
+      status: 200,
+      text: async () => "",
+      headers: { get: () => null },
+    });
+
+    const response = await proxyApiRequest(request(), "/api/clients");
+
+    expect(response.headers.get("Content-Type")).toBe("application/json");
+    expect(await response.text()).toBe("");
+  });
+
+  it("targets the backend base url from the environment", async () => {
+    delete process.env.AUTH_URL;
+    getTokenMock.mockResolvedValueOnce({ accessToken: "the-token" });
+    fetchMock.mockResolvedValueOnce(new Response("{}", { status: 200 }));
+
+    await proxyApiRequest(request(), "/api/clients");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/clients", expect.anything());
   });
 
   it("sets the json content type when the request has a body", async () => {
