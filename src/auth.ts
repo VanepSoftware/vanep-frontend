@@ -11,7 +11,7 @@ export const authOptions: NextAuthOptions = {
       name: "Vanep",
       type: "oauth",
       client: {
-        token_endpoint_auth_method: "none",
+        token_endpoint_auth_method: "client_secret_post",
       },
       authorization: {
         url: `${authUrl}/oauth2/authorize`,
@@ -33,6 +33,7 @@ export const authOptions: NextAuthOptions = {
         },
       },
       clientId: process.env.AUTH_OAUTH_CLIENT_ID ?? "",
+      clientSecret: process.env.AUTH_OAUTH_CLIENT_SECRET ?? "",
       profile(profile: { token: string; name?: string | null; email?: string | null }) {
         return {
           id: String(profile.token),

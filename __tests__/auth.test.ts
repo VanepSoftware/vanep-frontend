@@ -15,18 +15,13 @@ describe("authOptions", () => {
   });
 
   it("reads client id, secret and debug from env at import time", async () => {
-    const prev = {
-      id: process.env.AUTH_OAUTH_CLIENT_ID,
-      secret: process.env.AUTH_SECRET,
-      nodeEnv: process.env.NODE_ENV,
-      debug: process.env.NEXTAUTH_DEBUG,
-    };
     try {
       vi.resetModules();
-      process.env.AUTH_OAUTH_CLIENT_ID = "vanep-frontend";
-      process.env.AUTH_SECRET = "the-secret";
-      process.env.NODE_ENV = "production";
-      process.env.NEXTAUTH_DEBUG = "true";
+      // stubEnv restaura sozinho e respeita NODE_ENV como somente-leitura.
+      vi.stubEnv("AUTH_OAUTH_CLIENT_ID", "vanep-frontend");
+      vi.stubEnv("AUTH_SECRET", "the-secret");
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("NEXTAUTH_DEBUG", "true");
 
       const mod = await import("@/auth");
 
@@ -34,10 +29,7 @@ describe("authOptions", () => {
       expect((mod.authOptions.providers[0] as any).clientId).toBe("vanep-frontend");
       expect(mod.authOptions.debug).toBe(true);
     } finally {
-      process.env.AUTH_OAUTH_CLIENT_ID = prev.id;
-      process.env.AUTH_SECRET = prev.secret;
-      process.env.NODE_ENV = prev.nodeEnv;
-      process.env.NEXTAUTH_DEBUG = prev.debug;
+      vi.unstubAllEnvs();
       vi.resetModules();
     }
   });
