@@ -44,5 +44,5 @@ next-env.d.ts
 # claude code (configuracao pessoal)
 .claude/settings.local.json
 
-# vscode (configuracao pessoal)
-.vscode/settings.json
+# vscode (configuracao pessoal de editor)
+.vscode/
