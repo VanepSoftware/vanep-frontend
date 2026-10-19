@@ -38,9 +38,18 @@ const ptBR = {
       },
     },
     stats: [
-      { value: "4 avisos", label: "por dia no seu celular, um a cada etapa do trajeto" },
-      { value: "100%", label: "dos contratos ficam digitais e guardados no app" },
-      { value: "1º mês", label: "grátis para o motorista testar sem pagar nada" },
+      {
+        value: "4 avisos",
+        label: "por dia no seu celular, um a cada etapa do trajeto",
+      },
+      {
+        value: "100%",
+        label: "dos contratos ficam digitais e guardados no app",
+      },
+      {
+        value: "1º mês",
+        label: "grátis para o motorista testar sem pagar nada",
+      },
       { value: "2 apps", label: "em um só: o do responsável e o do motorista" },
     ],
     problem: {
@@ -53,23 +62,31 @@ const ptBR = {
       items: [
         {
           title: "Achar o motorista",
-          before: "Indicação no grupo de pais, sem saber se os documentos estão em dia.",
-          after: "Busca por endereço ou escola, com documentos conferidos e notas de outros pais.",
+          before:
+            "Indicação no grupo de pais, sem saber se os documentos estão em dia.",
+          after:
+            "Busca por endereço ou escola, com documentos conferidos e notas de outros pais.",
         },
         {
           title: "Acompanhar o trajeto",
-          before: "Ninguém sabe onde a van está; só mensagens soltas no WhatsApp.",
-          after: "Van no mapa ao vivo e um aviso no celular a cada etapa do caminho.",
+          before:
+            "Ninguém sabe onde a van está; só mensagens soltas no WhatsApp.",
+          after:
+            "Van no mapa ao vivo e um aviso no celular a cada etapa do caminho.",
         },
         {
           title: "Fechar o contrato",
-          before: "Acordo no papel, sem padrão e sem prova nenhuma se der problema.",
-          after: "Contrato digital guardado no app, com data e as duas partes registradas.",
+          before:
+            "Acordo no papel, sem padrão e sem prova nenhuma se der problema.",
+          after:
+            "Contrato digital guardado no app, com data e as duas partes registradas.",
         },
         {
           title: "Pagar",
-          before: "Dinheiro ou Pix avulso todo mês, e o motorista correndo atrás de quem atrasou.",
-          after: "Mensalidade cobrada automaticamente, com o histórico de tudo o que foi pago.",
+          before:
+            "Dinheiro ou Pix avulso todo mês, e o motorista correndo atrás de quem atrasou.",
+          after:
+            "Mensalidade cobrada automaticamente, com o histórico de tudo o que foi pago.",
         },
       ],
     },
@@ -151,8 +168,7 @@ const ptBR = {
     photoBand: {
       eyebrow: "O dia a dia",
       title: "Todo dia seu filho embarca. Todo dia você fica sabendo.",
-      body:
-        "No momento em que o aluno entra na van, o celular do responsável apita. E apita de novo na chegada à escola, na volta e na chegada em casa.",
+      body: "No momento em que o aluno entra na van, o celular do responsável apita. E apita de novo na chegada à escola, na volta e na chegada em casa.",
       imageAlt: "Crianças de uniforme e mochila entrando em uma van escolar",
       stepsLabel: "As quatro etapas de todo dia",
       stepsHint: "Cada uma dispara uma notificação no celular na hora.",
@@ -190,7 +206,8 @@ const ptBR = {
     howItWorks: {
       eyebrow: "Como funciona",
       title: "Da busca até o dia a dia da rota.",
-      subtitle: "Quatro passos dentro do app, do primeiro contato à mensalidade.",
+      subtitle:
+        "Quatro passos dentro do app, do primeiro contato à mensalidade.",
       steps: [
         {
           n: "1",
@@ -275,6 +292,7 @@ const ptBR = {
       accessLabel: "Acessos",
       clients: "Clientes",
       drivers: "Motoristas",
+      documentValidation: "Validação de documento",
       roles: "Cargos",
       permissions: "Permissões",
       soon: "Em breve",
@@ -309,8 +327,7 @@ const ptBR = {
       deleteError: "Não foi possível excluir o cliente.",
       view: "Ver",
       viewTitle: "Detalhes do cliente",
-      viewHint:
-        "Este painel não altera o cadastro do cliente.",
+      viewHint: "Este painel não altera o cadastro do cliente.",
       nameLabel: "Nome",
       emailLabel: "E-mail",
       photoLabel: "Foto",
@@ -348,7 +365,8 @@ const ptBR = {
       edit: "Editar",
       delete: "Excluir",
       deleteTitle: "Excluir conjunto",
-      deleteDescription: "Tem certeza que deseja excluir este conjunto de permissões?",
+      deleteDescription:
+        "Tem certeza que deseja excluir este conjunto de permissões?",
       deleteError: "Não foi possível excluir o conjunto.",
       save: "Salvar",
       saveError: "Não foi possível salvar o conjunto.",
@@ -398,9 +416,111 @@ const ptBR = {
       pageInfo: "Página {page} de {total}",
       totalInfo: "{total} motorista(s) no total",
     },
+    documentValidation: {
+      title: "Validação de documento",
+      description:
+        "Revise os documentos enviados pelos motoristas e aprove ou rejeite o acesso ao aplicativo.",
+      filters: {
+        pending: "Pendentes de revisão",
+        all: "Todos os motoristas",
+      },
+      columns: {
+        name: "Nome",
+        email: "E-mail",
+        phone: "Telefone",
+        document: "CPF / CNPJ",
+        experience: "Experiência",
+        approval: "Status",
+        createdAt: "Cadastro",
+        actions: "Ações",
+      },
+      approvalStatus: {
+        PENDING: "Pendente",
+        UNDER_REVIEW: "Em análise",
+        APPROVED: "Aprovado",
+        REJECTED: "Rejeitado",
+      },
+      documentStatus: {
+        PENDING: "Pendente",
+        APPROVED: "Aprovado",
+        REJECTED: "Rejeitado",
+        MISSING: "Faltando envio",
+      },
+      documentTypes: {
+        CRLV: "CRLV (Documento do veículo)",
+        VEHICLE_INSPECTION: "Vistoria veicular",
+        MUNICIPAL_AUTHORIZATION: "Autorização municipal",
+        CRIMINAL_RECORD: "Antecedentes criminais",
+        RESIDENCE_PROOF: "Comprovante de residência",
+        PROFILE_PHOTO: "Foto de perfil",
+        VEHICLE_PHOTO: "Foto do veículo",
+        OTHER: "Outro documento",
+      },
+      experienceYears: "{years} ano(s)",
+      noName: "Sem nome",
+      noValue: "—",
+      empty: "Nenhum motorista encontrado para este filtro.",
+      loading: "Carregando motoristas...",
+      loadError: "Não foi possível carregar os motoristas.",
+      retry: "Tentar novamente",
+      reviewAction: "Revisar documentos",
+      previous: "Anterior",
+      next: "Próxima",
+      pageInfo: "Página {page} de {total}",
+      totalInfo: "{total} motorista(s) no total",
+      modal: {
+        title: "Revisão de documentos do motorista",
+        subtitle:
+          "Confira os dados cadastrais, todos os documentos enviados (aprovados, pendentes ou rejeitados) e os documentos que ainda faltam ser enviados.",
+        driverInfoSection: "Dados do motorista",
+        documentsSection: "Checklist completo de documentos",
+        documentsSummary:
+          "Enviados: {sent}/{total} · Aprovados: {approved} · Em análise: {pending} · Rejeitados: {rejected} · Faltando: {missing}",
+        loadingDocuments: "Carregando documentos enviados...",
+        loadDocumentsError:
+          "Não foi possível carregar os documentos deste motorista.",
+        emptyDocuments: "Este motorista ainda não enviou documentos.",
+        missingDocumentHint: "Este documento ainda não foi enviado pelo motorista para análise.",
+        openFile: "Abrir",
+        closeFile: "Fechar",
+        noFile: "Não enviado",
+        expiresAt: "Validade: {date}",
+        createdAt: "Enviado em: {date}",
+        rejectionReasonLabel: "Motivo da rejeição: {reason}",
+        approveDoc: "Aprovar",
+        rejectDoc: "Rejeitar",
+        docRejectionPlaceholder:
+          "Informe o motivo da rejeição deste documento...",
+        docRejectionRequired: "Informe o motivo para rejeitar o documento.",
+        confirmRejectDoc: "Confirmar rejeição do doc",
+        docStatusUpdateError:
+          "Não foi possível atualizar o status do documento.",
+        approveDriver: "Aprovar motorista",
+        approvingDriver: "Aprovando...",
+        rejectDriver: "Rejeitar motorista",
+        rejectingDriver: "Rejeitando...",
+        rejectReasonTitle: "Justificativa da rejeição do motorista",
+        rejectReasonHint:
+          "Explique o motivo da rejeição (máximo de 255 caracteres). O motorista verá esta justificativa.",
+        rejectReasonPlaceholder:
+          "Ex.: CNH vencida ou comprovante de residência ilegível...",
+        rejectReasonRequired:
+          "A justificativa é obrigatória para rejeitar o motorista.",
+        confirmRejectDriver: "Confirmar rejeição",
+        approveError: "Não foi possível aprovar o motorista.",
+        rejectError: "Não foi possível rejeitar o motorista.",
+        basePriceLabel: "Mensalidade base",
+        cpfLabel: "CPF",
+        cnpjLabel: "CNPJ",
+        phoneLabel: "Telefone",
+        emailLabel: "E-mail",
+        experienceLabel: "Experiência",
+      },
+    },
     roles: {
       title: "Cargos",
-      description: "Cargos da plataforma. Cada cargo pode ser vinculado a um conjunto de permissões.",
+      description:
+        "Cargos da plataforma. Cada cargo pode ser vinculado a um conjunto de permissões.",
       columns: {
         name: "Nome",
         description: "Descrição",

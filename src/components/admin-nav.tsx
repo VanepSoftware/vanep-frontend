@@ -17,7 +17,8 @@ const groups: NavGroup[] = [
     label: sidebar.sectionLabel,
     items: [
       { href: "/admin/clients", label: sidebar.clients },
-      { href: "/admin/drivers", label: sidebar.drivers }
+      { href: "/admin/drivers", label: sidebar.drivers },
+      { href: "/admin/document-validation", label: sidebar.documentValidation }
     ]
   },
   {
