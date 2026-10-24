@@ -10,18 +10,56 @@ concurrency:
   group: ci-${{ github.head_ref || github.sha }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
-  verify:
-    name: Audit · Lint · Test · Build
+  changes:
+    name: Detecta mudanças de código
     runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+
+      - name: Filtra caminhos
+        id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          # 'some-with-excludes': o arquivo entra se casar com algum padrao positivo
+          # e com nenhum negado. Sem isso os '!' viram apenas mais uma clausula OR
+          # e o filtro casaria com praticamente tudo.
+          predicate-quantifier: "some-with-excludes"
+          filters: |
+            code:
+              - '**'
+              - '!**/*.md'
+              - '!docs/**'
+
+  verify:
+    name: Audit · Lint · Test · Build
+    needs: changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Docs-only PR — skip
+        if: needs.changes.outputs.code != 'true'
+        run: echo "No code changes — skipping CI"
+
+      - if: needs.changes.outputs.code == 'true'
+        uses: actions/checkout@v4
+      - if: needs.changes.outputs.code == 'true'
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - run: npm audit --audit-level=high
-      - run: npm run lint
-      - run: npm run test:coverage
-      - run: npm run build
+      - if: needs.changes.outputs.code == 'true'
+        run: npm ci
+      - if: needs.changes.outputs.code == 'true'
+        run: npm audit --audit-level=high
+      - if: needs.changes.outputs.code == 'true'
+        run: npm run lint
+      - if: needs.changes.outputs.code == 'true'
+        run: npm run test:coverage
+      - if: needs.changes.outputs.code == 'true'
+        run: npm run build
