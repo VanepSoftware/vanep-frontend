@@ -71,3 +71,52 @@ export async function proxyApiRequest(
 
   return refreshed ? persistSession(proxied, fresh) : proxied;
 }
+
+export async function proxyBinaryRequest(
+  req: NextRequest,
+  path: string,
+  init?: RequestInit,
+): Promise<NextResponse> {
+  const token = await getToken({ req });
+  if (!token?.accessToken) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const { token: fresh, refreshed } = await maybeRefreshAccessToken(token);
+  if (!fresh.accessToken) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const response = await fetch(`${apiBaseUrl()}${path}`, {
+    ...init,
+    headers: {
+      ...init?.headers,
+      Authorization: `Bearer ${fresh.accessToken}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const proxiedError = new NextResponse((await response.text()) || null, {
+      status: response.status,
+      headers: {
+        "Content-Type": response.headers.get("Content-Type") ?? "application/json",
+      },
+    });
+    return refreshed ? persistSession(proxiedError, fresh) : proxiedError;
+  }
+
+  const headers = new Headers();
+  const contentType = response.headers.get("Content-Type");
+  if (contentType) headers.set("Content-Type", contentType);
+  const contentDisposition = response.headers.get("Content-Disposition");
+  if (contentDisposition) headers.set("Content-Disposition", contentDisposition);
+
+  const buffer = await response.arrayBuffer();
+  const proxied = new NextResponse(buffer, {
+    status: response.status,
+    headers,
+  });
+
+  return refreshed ? persistSession(proxied, fresh) : proxied;
+}

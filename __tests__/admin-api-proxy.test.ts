@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { proxyApiRequest } from "@/lib/server/api";
+import { proxyApiRequest, proxyBinaryRequest } from "@/lib/server/api";
 
 vi.mock("next-auth/jwt", () => ({
   getToken: vi.fn(),
@@ -168,5 +168,73 @@ describe("proxyApiRequest", () => {
         headers: expect.objectContaining({ "Content-Type": "application/json" }),
       }),
     );
+  });
+
+  describe("proxyBinaryRequest", () => {
+    it("returns 401 when there is no session token", async () => {
+      getTokenMock.mockResolvedValueOnce(null);
+
+      const response = await proxyBinaryRequest(
+        request("/api/admin/driver-documents/doc-1/file"),
+        "/api/driver-documents/doc-1/file",
+      );
+
+      expect(response.status).toBe(401);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("returns 401 when refresh loses the access token", async () => {
+      getTokenMock.mockResolvedValueOnce({ accessToken: "expired" });
+      refreshMock.mockResolvedValueOnce({ token: { accessToken: undefined }, refreshed: true });
+
+      const response = await proxyBinaryRequest(
+        request("/api/admin/driver-documents/doc-1/file"),
+        "/api/driver-documents/doc-1/file",
+      );
+
+      expect(response.status).toBe(401);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("forwards binary content and preserves Content-Type and Content-Disposition headers", async () => {
+      getTokenMock.mockResolvedValueOnce({ accessToken: "the-token" });
+      const bytes = new Uint8Array([0x25, 0x50, 0x44, 0x46]);
+      fetchMock.mockResolvedValueOnce(
+        new Response(bytes, {
+          status: 200,
+          headers: {
+            "Content-Type": "application/pdf",
+            "Content-Disposition": 'inline; filename="crlv.pdf"',
+          },
+        }),
+      );
+
+      const response = await proxyBinaryRequest(
+        request("/api/admin/driver-documents/doc-1/file"),
+        "/api/driver-documents/doc-1/file",
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Type")).toBe("application/pdf");
+      expect(response.headers.get("Content-Disposition")).toBe('inline; filename="crlv.pdf"');
+      expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes);
+    });
+
+    it("propagates backend error statuses and re-issues session when refreshed", async () => {
+      getTokenMock.mockResolvedValueOnce({ accessToken: "expired", refreshToken: "r" });
+      refreshMock.mockResolvedValueOnce({
+        token: { accessToken: "fresh", refreshToken: "r" },
+        refreshed: true,
+      });
+      fetchMock.mockResolvedValueOnce(new Response("Not found", { status: 404 }));
+
+      const response = await proxyBinaryRequest(
+        request("/api/admin/driver-documents/doc-1/file"),
+        "/api/driver-documents/doc-1/file",
+      );
+
+      expect(response.status).toBe(404);
+      expect(response.cookies.get("next-auth.session-token")?.value).toBe("re-encoded-session");
+    });
   });
 });
