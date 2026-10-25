@@ -3,6 +3,13 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  buildClientPatch,
+  InvalidRatingError,
+  isEmptyPatch,
+  toEditForm,
+  type ClientEditForm,
+} from "@/lib/admin/client-patch";
 import { t } from "@/lib/l10n";
 
 const messages = t("admin").clients;
@@ -100,6 +107,13 @@ export default function AdminClientsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [viewTarget, setViewTarget] = useState<Client | null>(null);
+  const [editTarget, setEditTarget] = useState<Client | null>(null);
+  const [form, setForm] = useState<ClientEditForm | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [photoVersion, setPhotoVersion] = useState(0);
 
   const loadClients = useCallback(async (targetPage: number) => {
     setLoading(true);
@@ -118,6 +132,100 @@ export default function AdminClientsPage() {
   useEffect(() => {
     void loadClients(page);
   }, [page, loadClients]);
+
+  function openEdit(client: Client) {
+    setEditTarget(client);
+    setForm(toEditForm(client));
+    setEditError(null);
+    setPhotoError(null);
+  }
+
+  function closeEdit() {
+    setEditTarget(null);
+    setForm(null);
+    setEditError(null);
+    setPhotoError(null);
+  }
+
+  function errorFor(status: number): string {
+    if (status === 409) return messages.editConflict;
+    if (status === 403) return messages.editForbidden;
+    if (status === 404) return messages.editNotFound;
+    return messages.editError;
+  }
+
+  function photoErrorFor(status: number): string {
+    if (status === 400) return messages.photoInvalidType;
+    if (status === 413) return messages.photoTooLarge;
+    if (status === 403) return messages.editForbidden;
+    if (status === 404) return messages.editNotFound;
+    return messages.photoUploadError;
+  }
+
+  async function uploadPhoto(file: File | null) {
+    if (!file || !editTarget) return;
+
+    setUploadingPhoto(true);
+    setPhotoError(null);
+    try {
+      const body = new FormData();
+      body.set("file", file);
+      const res = await fetch(
+        `/api/admin/clients/${encodeURIComponent(editTarget.token)}/photo`,
+        { method: "POST", body },
+      );
+      if (!res.ok) {
+        setPhotoError(photoErrorFor(res.status));
+        return;
+      }
+      setEditTarget({ ...editTarget, photo: `/api/clients/${editTarget.token}/photo` });
+      setPhotoVersion((version) => version + 1);
+      await loadClients(page);
+    } catch {
+      setPhotoError(messages.photoUploadError);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
+  async function saveEdit(event: { preventDefault: () => void }) {
+    event.preventDefault();
+    if (!editTarget || !form) return;
+
+    let patch;
+    try {
+      patch = buildClientPatch(editTarget, form);
+    } catch (cause) {
+      setEditError(cause instanceof InvalidRatingError ? messages.invalidRating : messages.editError);
+      return;
+    }
+
+    if (isEmptyPatch(patch)) {
+      setEditError(messages.noChanges);
+      return;
+    }
+
+    setSaving(true);
+    setEditError(null);
+    try {
+      const res = await fetch(`/api/admin/clients/${encodeURIComponent(editTarget.token)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) {
+        setEditError(errorFor(res.status));
+        return;
+      }
+      closeEdit();
+      setViewTarget(null);
+      await loadClients(page);
+    } catch {
+      setEditError(messages.editError);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function confirmDelete() {
     if (!deleteTarget) return;
@@ -229,6 +337,13 @@ export default function AdminClientsPage() {
                       </button>
                       <button
                         type="button"
+                        onClick={() => openEdit(client)}
+                        className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition-all duration-200 hover:border-brand hover:bg-brand-soft hover:text-brand active:scale-[0.96]"
+                      >
+                        {messages.edit}
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setDeleteTarget(client)}
                         className="rounded-lg border border-danger-border px-3 py-1.5 text-xs font-semibold text-danger transition-all duration-200 hover:border-danger hover:bg-danger-soft active:scale-[0.96]"
                       >
@@ -299,16 +414,13 @@ export default function AdminClientsPage() {
               <DetailRow label={messages.emailLabel}>{viewTarget.email ?? "—"}</DetailRow>
               <DetailRow label={messages.photoLabel}>
                 {viewTarget.photo ? (
-                  <a
-                    href={viewTarget.photo}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="break-all text-brand underline-offset-2 hover:underline"
-                  >
-                    {viewTarget.photo}
-                  </a>
+                  <img
+                    src={`/api/admin/clients/${encodeURIComponent(viewTarget.token)}/photo`}
+                    alt=""
+                    className="h-16 w-16 rounded-full object-cover"
+                  />
                 ) : (
-                  "—"
+                  messages.noPhoto
                 )}
               </DetailRow>
               <DetailRow label={messages.ratingLabel}>
@@ -343,6 +455,134 @@ export default function AdminClientsPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {editTarget != null && form != null && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label={messages.editTitle}
+        >
+          <form
+            onSubmit={(event) => void saveEdit(event)}
+            className="w-full max-w-md rounded-2xl border border-border bg-background p-6 shadow-2xl"
+          >
+            <h2 className="font-display text-lg font-bold text-foreground">{messages.editTitle}</h2>
+            <p className="mt-2 text-xs text-muted-foreground">{messages.editHint}</p>
+
+            {editError && (
+              <p
+                role="alert"
+                className="mt-4 rounded-xl border border-danger-border bg-danger-soft px-3 py-2 text-sm text-danger"
+              >
+                {editError}
+              </p>
+            )}
+
+            <label className="mt-4 block text-sm text-muted-foreground">
+              {messages.nameLabel}
+              <input
+                type="text"
+                value={form.name}
+                onChange={(event) => setForm({ ...form, name: event.target.value })}
+                maxLength={255}
+                className="mt-1 w-full rounded-lg border border-border bg-background-deep px-3 py-2 text-sm text-foreground outline-none focus:border-brand"
+              />
+            </label>
+
+            <label className="mt-4 block text-sm text-muted-foreground">
+              {messages.emailLabel}
+              <input
+                type="email"
+                value={form.email}
+                onChange={(event) => setForm({ ...form, email: event.target.value })}
+                maxLength={255}
+                className="mt-1 w-full rounded-lg border border-border bg-background-deep px-3 py-2 text-sm text-foreground outline-none focus:border-brand"
+              />
+            </label>
+
+            <div className="mt-4">
+              <span className="block text-sm text-muted-foreground">{messages.photoLabel}</span>
+              <div className="mt-1 flex items-center gap-3">
+                {editTarget.photo ? (
+                  <img
+                    key={photoVersion}
+                    src={`/api/admin/clients/${encodeURIComponent(editTarget.token)}/photo?v=${photoVersion}`}
+                    alt=""
+                    className="h-14 w-14 rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-center text-[0.65rem] text-muted-foreground">
+                    {messages.noPhoto}
+                  </span>
+                )}
+                <div>
+                  <label className="inline-flex cursor-pointer items-center rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition-all duration-200 hover:border-brand hover:bg-brand-soft hover:text-brand">
+                    {uploadingPhoto ? messages.uploadingPhoto : messages.changePhoto}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadingPhoto}
+                      onChange={(event) => {
+                        void uploadPhoto(event.target.files?.[0] ?? null);
+                        event.target.value = "";
+                      }}
+                    />
+                  </label>
+                  <p className="mt-1 text-xs text-muted-foreground">{messages.photoHint}</p>
+                </div>
+              </div>
+              {photoError && (
+                <p role="alert" className="mt-1 text-xs text-danger">
+                  {photoError}
+                </p>
+              )}
+            </div>
+
+            <label className="mt-4 block text-sm text-muted-foreground">
+              {messages.ratingLabel}
+              <input
+                type="number"
+                min={0}
+                max={5}
+                step={0.1}
+                value={form.rating}
+                onChange={(event) => setForm({ ...form, rating: event.target.value })}
+                className="mt-1 w-full rounded-lg border border-border bg-background-deep px-3 py-2 text-sm text-foreground outline-none focus:border-brand"
+              />
+            </label>
+
+            <label className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={form.active}
+                onChange={(event) => setForm({ ...form, active: event.target.checked })}
+                className="h-4 w-4 accent-brand"
+              />
+              {messages.activeLabel}
+            </label>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeEdit}
+                disabled={saving}
+                className="rounded-lg border border-border px-4 py-2 text-sm text-foreground transition-all duration-200 hover:border-border-strong hover:bg-muted active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50"
+              >
+                {common.cancel}
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground transition-all duration-200 hover:opacity-90 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50"
+              >
+                {saving ? messages.saving : messages.save}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </section>
