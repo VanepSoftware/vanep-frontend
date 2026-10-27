@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -95,6 +96,52 @@ function DetailRow({ label, children }: { label: string; children: ReactNode }) 
     <div className="grid grid-cols-[7.5rem_1fr] gap-3 py-2 text-sm">
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="text-foreground">{children}</dd>
+    </div>
+  );
+}
+
+function initials(name: string | null): string {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
+  return (first + last).toUpperCase();
+}
+
+function ClientAvatar({
+  client,
+  photoVersion,
+  statusDot,
+}: {
+  client: Client;
+  photoVersion?: number;
+  statusDot?: boolean;
+}) {
+  return (
+    <div className="relative h-[72px] w-[72px] shrink-0">
+      {client.photo ? (
+        <Image
+          key={photoVersion}
+          src={`/api/admin/clients/${encodeURIComponent(client.token)}/photo${
+            photoVersion != null ? `?v=${photoVersion}` : ""
+          }`}
+          alt=""
+          width={72}
+          height={72}
+          className="h-[72px] w-[72px] rounded-full object-cover shadow-[0_0_0_3px_var(--brand-soft)]"
+        />
+      ) : (
+        <div className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-gradient-to-br from-brand to-accent text-lg font-extrabold text-brand-foreground shadow-[0_0_0_3px_var(--brand-soft)]">
+          {initials(client.name)}
+        </div>
+      )}
+      {statusDot && (
+        <span
+          className={`absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-background ${
+            client.active ? "bg-success" : "bg-muted-foreground"
+          }`}
+        />
+      )}
     </div>
   );
 }
@@ -407,30 +454,33 @@ export default function AdminClientsPage() {
             </h2>
             <p className="mt-2 text-xs text-muted-foreground">{messages.viewHint}</p>
 
+            <div className="mt-4 flex items-center gap-4">
+              <ClientAvatar client={viewTarget} statusDot />
+              <div>
+                <p className="text-base font-bold text-foreground">
+                  {viewTarget.name ?? messages.noName}
+                </p>
+                <div className="mt-1 flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                      viewTarget.active
+                        ? "bg-success-soft text-success"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {viewTarget.active ? messages.active : messages.inactive}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {viewTarget.rating != null
+                      ? `★ ${Number(viewTarget.rating).toFixed(1)}`
+                      : messages.noRating}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             <dl className="mt-4 divide-y divide-border">
-              <DetailRow label={messages.nameLabel}>
-                {viewTarget.name ?? messages.noName}
-              </DetailRow>
               <DetailRow label={messages.emailLabel}>{viewTarget.email ?? "—"}</DetailRow>
-              <DetailRow label={messages.photoLabel}>
-                {viewTarget.photo ? (
-                  <img
-                    src={`/api/admin/clients/${encodeURIComponent(viewTarget.token)}/photo`}
-                    alt=""
-                    className="h-16 w-16 rounded-full object-cover"
-                  />
-                ) : (
-                  messages.noPhoto
-                )}
-              </DetailRow>
-              <DetailRow label={messages.ratingLabel}>
-                {viewTarget.rating != null
-                  ? Number(viewTarget.rating).toFixed(1)
-                  : messages.noRating}
-              </DetailRow>
-              <DetailRow label={messages.statusLabel}>
-                {viewTarget.active ? messages.active : messages.inactive}
-              </DetailRow>
               <DetailRow label={messages.addressLabel}>
                 {viewTarget.address && addressLines(viewTarget.address).length > 0 ? (
                   <span className="block whitespace-pre-line">
@@ -505,22 +555,27 @@ export default function AdminClientsPage() {
 
             <div className="mt-4">
               <span className="block text-sm text-muted-foreground">{messages.photoLabel}</span>
-              <div className="mt-1 flex items-center gap-3">
-                {editTarget.photo ? (
-                  <img
-                    key={photoVersion}
-                    src={`/api/admin/clients/${encodeURIComponent(editTarget.token)}/photo?v=${photoVersion}`}
-                    alt=""
-                    className="h-14 w-14 rounded-full object-cover"
-                  />
-                ) : (
-                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-center text-[0.65rem] text-muted-foreground">
-                    {messages.noPhoto}
-                  </span>
-                )}
-                <div>
-                  <label className="inline-flex cursor-pointer items-center rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition-all duration-200 hover:border-brand hover:bg-brand-soft hover:text-brand">
-                    {uploadingPhoto ? messages.uploadingPhoto : messages.changePhoto}
+              <div className="mt-1 flex items-center gap-4">
+                <div className="relative">
+                  <ClientAvatar client={editTarget} photoVersion={photoVersion} />
+                  <label
+                    className={`absolute -bottom-1 -right-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border-2 border-background bg-brand text-brand-foreground transition-opacity duration-200 hover:opacity-90 ${
+                      uploadingPhoto ? "pointer-events-none opacity-50" : ""
+                    }`}
+                  >
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      aria-hidden="true"
+                    >
+                      <path d="M4 7h3l2-3h6l2 3h3v12H4z" />
+                      <circle cx="12" cy="13" r="3.5" />
+                    </svg>
+                    <span className="sr-only">{messages.changePhoto}</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -532,7 +587,11 @@ export default function AdminClientsPage() {
                       }}
                     />
                   </label>
-                  <p className="mt-1 text-xs text-muted-foreground">{messages.photoHint}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    {uploadingPhoto ? messages.uploadingPhoto : messages.photoHint}
+                  </p>
                 </div>
               </div>
               {photoError && (
