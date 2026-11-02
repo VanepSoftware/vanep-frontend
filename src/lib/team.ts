@@ -1,12 +1,12 @@
 import type { StaticImageData } from "next/image";
 
-import arthurMariani from "@/assets/team/arthur-mariani.webp";
 import caioLucas from "@/assets/team/CaiooLucas.webp";
 import cauaDePaula from "@/assets/team/Cauazinkj.webp";
 import joaoBittencourt from "@/assets/team/JoaoBittencourt1.webp";
 import joaoJales from "@/assets/team/JoaoJales.webp";
 import jonathanAraujo from "@/assets/team/Jhonathan1656.webp";
 import matheus from "@/assets/team/matheus0346.webp";
+import yanHenrique from "@/assets/team/YanGoes.webp";
 
 export type TeamMember = {
   /** Usuário no GitHub, usado para montar o link do perfil. */
@@ -26,11 +26,11 @@ export type TeamMember = {
  * 160x160 em WebP. Quando alguém trocar a foto no GitHub, é preciso rebaixar.
  */
 export const team: readonly TeamMember[] = [
-  { login: "arthur-mariani", name: "Arthur Mariani", avatar: arthurMariani },
   { login: "CaiooLucas", name: "Caio Lucas", avatar: caioLucas },
   { login: "Cauazinkj", name: "Cauã de Paula", avatar: cauaDePaula },
   { login: "JoaoBittencourt1", name: "João Bittencourt", avatar: joaoBittencourt },
   { login: "JoaoJales", name: "João Ricardo Jales Cirino", avatar: joaoJales },
   { login: "Jhonathan1656", name: "Jonathan Araujo", avatar: jonathanAraujo },
   { login: "matheus0346", name: "matheus0346", avatar: matheus },
+  { login: "YanGoes", name: "Yan Henrique", avatar: yanHenrique },
 ];

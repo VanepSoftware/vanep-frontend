@@ -4,7 +4,7 @@ type WordmarkProps = {
 };
 
 /**
- * The "vanep." logotype recreated in text, with the optional pixel motion-trail
+ * The "vanep" logotype recreated in text, with the optional pixel motion-trail
  * that echoes the brand logo (light-blue squares dissolving to the left).
  */
 export function Wordmark({ className = "", withTrail = true }: WordmarkProps) {
@@ -18,7 +18,7 @@ export function Wordmark({ className = "", withTrail = true }: WordmarkProps) {
         </span>
       )}
       <span className="wordmark leading-none">
-        vanep<span className="wordmark-dot">.</span>
+        vanep
       </span>
     </span>
   );

@@ -81,10 +81,6 @@ body {
   letter-spacing: -0.03em;
 }
 
-.wordmark-dot {
-  color: var(--accent);
-}
-
 /* Rastro de pixels que ecoa o movimento do logo */
 @keyframes pixel-drift {
   0%, 100% { transform: translateX(0); opacity: 0.9; }
