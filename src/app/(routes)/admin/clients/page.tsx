@@ -11,6 +11,7 @@ import {
   toEditForm,
   type ClientEditForm,
 } from "@/lib/admin/client-patch";
+import { CLIENT_PHOTO_ACCEPT, validateClientPhoto } from "@/lib/admin/client-photo";
 import { t } from "@/lib/l10n";
 
 const messages = t("admin").clients;
@@ -128,6 +129,7 @@ function ClientAvatar({
           alt=""
           width={72}
           height={72}
+          unoptimized
           className="h-[72px] w-[72px] rounded-full object-cover shadow-[0_0_0_3px_var(--brand-soft)]"
         />
       ) : (
@@ -211,6 +213,14 @@ export default function AdminClientsPage() {
 
   async function uploadPhoto(file: File | null) {
     if (!file || !editTarget) return;
+
+    const validationError = validateClientPhoto(file);
+    if (validationError) {
+      setPhotoError(
+        validationError === "invalid-type" ? messages.photoInvalidType : messages.photoTooLarge,
+      );
+      return;
+    }
 
     setUploadingPhoto(true);
     setPhotoError(null);
@@ -578,7 +588,7 @@ export default function AdminClientsPage() {
                     <span className="sr-only">{messages.changePhoto}</span>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept={CLIENT_PHOTO_ACCEPT}
                       className="hidden"
                       disabled={uploadingPhoto}
                       onChange={(event) => {
