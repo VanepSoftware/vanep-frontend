@@ -6,6 +6,11 @@ const RESOURCE: Record<SubmissionKind, string> = {
   DRIVER_CNH: "driver-cnhs",
 };
 
+/** A página do motorista na API (o agregado da página e da revisão). */
+export function driverComplianceUrl(token: string): string {
+  return `/api/admin/drivers/${encodeURIComponent(token)}/compliance`;
+}
+
 /** Rota do proxy que decide um envio (`PUT`). */
 export function submissionStatusUrl(kind: SubmissionKind, token: string): string {
   return `/api/admin/${RESOURCE[kind]}/${encodeURIComponent(token)}/status`;
