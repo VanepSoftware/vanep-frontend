@@ -4,7 +4,9 @@ import { formatCpf, formatPlate, isAwaitingReview, maskCpf, vehicleDescription }
 import { expiryDistance, formatDate, formatDateTime, formatShortDateTime } from "./format";
 import type {
   ComplianceVehicle,
+  DocumentRejectionReason,
   DriverComplianceDetail,
+  DriverComplianceRow,
   RequirementStatus,
   ReviewQueueItem,
   Submission,
@@ -227,4 +229,57 @@ export function decisionLine(decision: {
       ? decision.rejectionReason ?? label
       : [label, decision.rejectionReason].filter(Boolean).join(" · ");
   return { title, reason };
+}
+
+// ---------------------------------------------------------------- reprovar
+
+export const DOCUMENT_REJECTION_REASONS: readonly DocumentRejectionReason[] = [
+  "ILLEGIBLE",
+  "EXPIRED",
+  "DATA_MISMATCH",
+  "WRONG_TYPE",
+  "INCOMPLETE",
+  "OTHER",
+];
+
+/** O assunto da prévia: o nome do documento e, se é da van, a placa. */
+export function rejectionPreviewSubject(found: FoundSubmission): string {
+  const document = messages.requirement[found.item.requirement];
+  const form = review.rejectForm;
+  if (!found.vehicle) return interpolate(form.previewSubject, { document });
+  return interpolate(form.previewSubjectVehicle, { document, plate: formatPlate(found.vehicle.plate) });
+}
+
+/**
+ * O que acontece com o cadastro depois da recusa: em análise, continua; numa
+ * renovação, o aprovado antes segue valendo.
+ */
+export function rejectionConsequence(detail: DriverComplianceDetail, found: FoundSubmission): string | null {
+  const isRenewal = found.item.pending?.token === found.submission.token;
+  if (isRenewal && found.item.satisfied) {
+    return review.rejectForm.keepsApproved;
+  }
+  if (detail.driver.approvalStatus === "UNDER_REVIEW") return review.rejectForm.underReview;
+  return null;
+}
+
+// ---------------------------------------------------------------- fim
+
+export type DoneScenario = "ready" | "blocked" | "clear";
+
+/**
+ * A tela de fim, quando não sobra pendente: aprovar o cadastro se a API deixa,
+ * esperar o motorista se ainda falta algo, ou nada a fazer.
+ */
+export function doneScenario(detail: DriverComplianceDetail): DoneScenario {
+  if (detail.driver.approvalStatus !== "UNDER_REVIEW") return "clear";
+  return detail.decision.canApprove ? "ready" : "blocked";
+}
+
+/** O próximo motorista com documento esperando revisão, que não seja este. */
+export function nextDriverInQueue(
+  rows: DriverComplianceRow[],
+  currentToken: string,
+): DriverComplianceRow | null {
+  return rows.find((row) => row.token !== currentToken && row.pendingReviewCount > 0) ?? null;
 }

@@ -17,6 +17,8 @@ import { submissionStatusUrl } from "@/lib/admin/driver-compliance/urls";
 import { ApiProblemError, fetchJson } from "@/lib/admin/fetch-json";
 import { t } from "@/lib/l10n";
 
+import { RejectForm } from "./reject-form";
+
 const messages = t("admin").driverReview;
 const review = messages.review;
 
@@ -37,6 +39,7 @@ function isStale(error: unknown): error is ApiProblemError {
 
 export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
   const { submission, item } = found;
+  const [mode, setMode] = useState<"facts" | "reject">("facts");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [revealDocument, setRevealDocument] = useState(false);
@@ -47,10 +50,10 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
   const decided = decisionLine(submission);
   const last = pending && item.lastDecision ? decisionLine(item.lastDecision) : null;
 
-  async function approve() {
+  /** Aprovar e reprovar: o mesmo `PUT`, com a `version` que o admin viu. */
+  async function decide(body: SubmissionStatusRequest) {
     setBusy(true);
     setError(null);
-    const body: SubmissionStatusRequest = { status: "APPROVED", version: submission.version };
     try {
       await fetchJson(submissionStatusUrl(submission.kind, submission.token), {
         method: "PUT",
@@ -66,6 +69,24 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (pending && mode === "reject") {
+    return (
+      <aside aria-label={review.rejectForm.title} className="flex flex-col rounded-2xl border border-border bg-background">
+        <RejectForm
+          detail={detail}
+          found={found}
+          busy={busy}
+          error={error}
+          onSubmit={(body) => void decide(body)}
+          onCancel={() => {
+            setError(null);
+            setMode("facts");
+          }}
+        />
+      </aside>
+    );
   }
 
   return (
@@ -123,7 +144,18 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
           <div className="flex justify-end gap-2">
             <button
               type="button"
-              onClick={() => void approve()}
+              onClick={() => {
+                setError(null);
+                setMode("reject");
+              }}
+              disabled={busy}
+              className="h-10 rounded-lg border border-danger-border px-5 text-sm font-semibold text-danger hover:border-danger hover:bg-danger-soft disabled:opacity-50"
+            >
+              {review.reject}
+            </button>
+            <button
+              type="button"
+              onClick={() => void decide({ status: "APPROVED", version: submission.version })}
               disabled={busy || !hasFile}
               aria-describedby={hasFile ? undefined : blockedId}
               className="h-10 rounded-lg bg-success px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:brightness-110 disabled:opacity-50"

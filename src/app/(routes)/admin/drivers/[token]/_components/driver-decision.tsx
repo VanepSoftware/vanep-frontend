@@ -130,7 +130,7 @@ export function BlockerList({
   );
 }
 
-function ApproveDialog({
+export function ApproveDialog({
   open,
   name,
   token,

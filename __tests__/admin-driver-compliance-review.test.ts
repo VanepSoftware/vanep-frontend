@@ -1,15 +1,20 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DOCUMENT_REJECTION_REASONS,
   ZOOM_STEPS,
   decisionLine,
+  doneScenario,
   driverHref,
   findSubmission,
   formatFileSize,
+  nextDriverInQueue,
   nextZoom,
   parseKindSlug,
   queuePosition,
   registrationChecks,
+  rejectionConsequence,
+  rejectionPreviewSubject,
   reviewEntryHref,
   reviewHref,
   rowSubmission,
@@ -256,5 +261,79 @@ describe("decisionLine", () => {
     expect(
       decisionLine({ ...base, reviewedBy: null, status: "REJECTED", rejectionReasonCode: null }),
     ).toEqual({ title: "Reprovado por Um admin em 09/11 · 15:30", reason: null });
+  });
+});
+
+describe("rejecting", () => {
+  it("offers every reason the API accepts", () => {
+    expect(DOCUMENT_REJECTION_REASONS).toEqual([
+      "ILLEGIBLE",
+      "EXPIRED",
+      "DATA_MISMATCH",
+      "WRONG_TYPE",
+      "INCOMPLETE",
+      "OTHER",
+    ]);
+  });
+
+  it("names the document and the van in the preview", () => {
+    const page = detail();
+    expect(rejectionPreviewSubject(findSubmission(page, "DRIVER_DOCUMENT", "doc1")!)).toBe(
+      "Documento reprovado: Certidão criminal",
+    );
+    expect(rejectionPreviewSubject(findSubmission(page, "VEHICLE_DOCUMENT", "vst1")!)).toBe(
+      "Documento da van ABC-1D23 reprovado: Vistoria semestral",
+    );
+  });
+
+  it("says the approved renewal keeps counting", () => {
+    const renewal = documentSubmission({ token: "c2" });
+    const page = detail({
+      driver: driver({ approvalStatus: "APPROVED" }),
+      driverRequirements: [
+        requirement("SCHOOL_DRIVER_COURSE", {
+          state: "APPROVED",
+          satisfied: true,
+          current: documentSubmission({ token: "c1", status: "APPROVED" }),
+          pending: renewal,
+        }),
+      ],
+    });
+    expect(rejectionConsequence(page, findSubmission(page, "DRIVER_DOCUMENT", "c2")!)).toBe(
+      "O documento aprovado antes continua valendo até um novo ser aprovado.",
+    );
+    expect(rejectionConsequence(page, findSubmission(page, "DRIVER_DOCUMENT", "c1")!)).toBeNull();
+  });
+
+  it("says the registration stays under review", () => {
+    const page = detail();
+    expect(rejectionConsequence(page, findSubmission(page, "DRIVER_DOCUMENT", "doc1")!)).toBe(
+      "O cadastro continua em análise.",
+    );
+  });
+});
+
+describe("the end of the review", () => {
+  it("offers to approve when the API allows", () => {
+    expect(
+      doneScenario(
+        detail({ decision: { canApprove: true, nextAction: "READY_TO_APPROVE", pendingReviewCount: 0, blockers: [] } }),
+      ),
+    ).toBe("ready");
+  });
+
+  it("hands over to the driver when something is still missing", () => {
+    expect(doneScenario(detail())).toBe("blocked");
+  });
+
+  it("has nothing left for a registration not under review", () => {
+    expect(doneScenario(detail({ driver: driver({ approvalStatus: "APPROVED" }) }))).toBe("clear");
+  });
+
+  it("picks the next driver with something pending", () => {
+    const row = (token: string, pendingReviewCount: number) =>
+      ({ token, pendingReviewCount }) as Parameters<typeof nextDriverInQueue>[0][number];
+    expect(nextDriverInQueue([row("d1", 2), row("d2", 0), row("d3", 1)], "d1")?.token).toBe("d3");
+    expect(nextDriverInQueue([row("d1", 2)], "d1")).toBeNull();
   });
 });
