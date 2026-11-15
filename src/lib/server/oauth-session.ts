@@ -8,6 +8,22 @@ function authBaseUrl(): string {
   return process.env.AUTH_URL ?? "";
 }
 
+function oauthClientId(): string {
+  return process.env.AUTH_OAUTH_CLIENT_ID ?? "";
+}
+
+function oauthClientSecret(): string {
+  const secret = process.env.AUTH_OAUTH_CLIENT_SECRET;
+  if (!secret) {
+    throw new Error(
+      "AUTH_OAUTH_CLIENT_SECRET is not set. The authorization server only issues refresh " +
+        "tokens to a client that authenticates, so without it every session dies at the " +
+        "access token TTL.",
+    );
+  }
+  return secret;
+}
+
 export function getAccessTokenExp(accessToken: string): number | undefined {
   try {
     const payload = JSON.parse(Buffer.from(accessToken.split(".")[1], "base64url").toString());
@@ -29,46 +45,50 @@ export async function refreshAccessToken(token: JWT): Promise<JWT> {
     return inFlight;
   }
 
-  const refreshPromise = (async (): Promise<JWT> => {
-    try {
-      const body = new URLSearchParams({
-        grant_type: "refresh_token",
-        refresh_token: refreshToken,
-        client_id: process.env.AUTH_OAUTH_CLIENT_ID ?? "",
-      });
-
-      const response = await fetch(`${authBaseUrl()}/oauth2/token`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          Accept: "application/json",
-        },
-        body,
-      });
-
-      if (!response.ok) {
-        return { ...token, accessToken: undefined, refreshToken: undefined };
-      }
-
-      const data = (await response.json()) as {
-        access_token?: string;
-        refresh_token?: string;
-      };
-
-      return {
-        ...token,
-        accessToken: data.access_token ?? token.accessToken,
-        refreshToken: data.refresh_token ?? token.refreshToken,
-      };
-    } catch {
-      return { ...token, accessToken: undefined, refreshToken: undefined };
-    } finally {
-      refreshInFlightByToken.delete(refreshToken);
-    }
-  })();
-
+  const refreshPromise = exchangeRefreshToken(token, refreshToken);
+  // The cleanup has to be attached after the map entry exists. Registering it inside the
+  // exchange would let a synchronous throw delete the entry before this line adds it, leaving
+  // a settled promise with cleared tokens cached forever under this refresh token.
   refreshInFlightByToken.set(refreshToken, refreshPromise);
+  void refreshPromise.finally(() => refreshInFlightByToken.delete(refreshToken));
   return refreshPromise;
+}
+
+async function exchangeRefreshToken(token: JWT, refreshToken: string): Promise<JWT> {
+  try {
+    const body = new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+      client_id: oauthClientId(),
+      client_secret: oauthClientSecret(),
+    });
+
+    const response = await fetch(`${authBaseUrl()}/oauth2/token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      },
+      body,
+    });
+
+    if (!response.ok) {
+      return { ...token, accessToken: undefined, refreshToken: undefined };
+    }
+
+    const data = (await response.json()) as {
+      access_token?: string;
+      refresh_token?: string;
+    };
+
+    return {
+      ...token,
+      accessToken: data.access_token ?? token.accessToken,
+      refreshToken: data.refresh_token ?? token.refreshToken,
+    };
+  } catch {
+    return { ...token, accessToken: undefined, refreshToken: undefined };
+  }
 }
 
 export async function revokeToken(
@@ -79,7 +99,8 @@ export async function revokeToken(
     const body = new URLSearchParams({
       token,
       token_type_hint: tokenTypeHint,
-      client_id: process.env.AUTH_OAUTH_CLIENT_ID ?? "",
+      client_id: oauthClientId(),
+      client_secret: oauthClientSecret(),
     });
     await fetch(`${authBaseUrl()}/oauth2/revoke`, {
       method: "POST",
@@ -89,6 +110,24 @@ export async function revokeToken(
   } catch {
     
   }
+}
+
+/**
+ * `getToken()` reads the session cookie directly, so a refresh done inside a route handler never
+ * reaches the `jwt` callback that would persist it. Re-issuing the cookie here is what keeps the
+ * next request from starting over with the tokens this one already replaced.
+ */
+export function sessionCookieName(): string {
+  const useSecureCookies = (process.env.NEXTAUTH_URL ?? "").startsWith("https://");
+  return useSecureCookies ? "__Secure-next-auth.session-token" : "next-auth.session-token";
+}
+
+export function sessionSecret(): string {
+  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+  if (!secret) {
+    throw new Error("AUTH_SECRET (or NEXTAUTH_SECRET) is not set.");
+  }
+  return secret;
 }
 
 export async function maybeRefreshAccessToken(

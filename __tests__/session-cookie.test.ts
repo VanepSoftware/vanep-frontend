@@ -7,56 +7,55 @@ vi.mock("next-auth/jwt", () => ({
 
 import { encode } from "next-auth/jwt";
 
-import { chunkSessionValue, persistSession, sessionCookieName } from "@/lib/server/session-cookie";
+import { chunkSessionValue, persistSession } from "@/lib/server/session-cookie";
 
 const encodeMock = vi.mocked(encode);
+const CHUNK_SIZE = 4096 - 163;
 
-describe("sessionCookieName", () => {
-  afterEach(() => {
-    delete process.env.NEXTAUTH_URL;
-  });
-
-  it("uses the secure prefix behind https", () => {
-    process.env.NEXTAUTH_URL = "https://app.vanep.com.br";
-
-    expect(sessionCookieName()).toBe("__Secure-next-auth.session-token");
-  });
-
-  it("drops the prefix on plain http", () => {
-    process.env.NEXTAUTH_URL = "http://localhost:3000";
-
-    expect(sessionCookieName()).toBe("next-auth.session-token");
-  });
-
-  it("fails loudly when the frontend url is missing", () => {
-    expect(() => sessionCookieName()).toThrow("NEXTAUTH_URL");
-  });
-});
+function restoreEnv(name: "NEXTAUTH_URL" | "AUTH_SECRET", previous: string | undefined) {
+  if (previous === undefined) {
+    delete process.env[name];
+  } else {
+    process.env[name] = previous;
+  }
+}
 
 describe("chunkSessionValue", () => {
   it("keeps a small session in a single cookie", () => {
     expect(chunkSessionValue("session", "short")).toEqual([{ name: "session", value: "short" }]);
   });
 
-  it("splits a session that does not fit and preserves the value in order", () => {
-    const value = "x".repeat(5000);
+  it("keeps a value that fills the chunk budget in one cookie", () => {
+    const value = "x".repeat(CHUNK_SIZE);
+
+    expect(chunkSessionValue("session", value)).toEqual([{ name: "session", value }]);
+  });
+
+  it("splits the first byte past the budget and preserves the value in order", () => {
+    const value = "x".repeat(CHUNK_SIZE + 1);
 
     const chunks = chunkSessionValue("session", value);
 
     expect(chunks.map((chunk) => chunk.name)).toEqual(["session.0", "session.1"]);
+    expect(chunks[0]?.value).toHaveLength(CHUNK_SIZE);
     expect(chunks.map((chunk) => chunk.value).join("")).toBe(value);
   });
 });
 
 describe("persistSession", () => {
+  let previousUrl: string | undefined;
+  let previousSecret: string | undefined;
+
   beforeEach(() => {
+    previousUrl = process.env.NEXTAUTH_URL;
+    previousSecret = process.env.AUTH_SECRET;
     process.env.NEXTAUTH_URL = "http://localhost:3000";
     process.env.AUTH_SECRET = "test-secret";
   });
 
   afterEach(() => {
-    delete process.env.NEXTAUTH_URL;
-    delete process.env.AUTH_SECRET;
+    restoreEnv("NEXTAUTH_URL", previousUrl);
+    restoreEnv("AUTH_SECRET", previousSecret);
     vi.clearAllMocks();
   });
 
@@ -73,6 +72,28 @@ describe("persistSession", () => {
     expect(cookie?.httpOnly).toBe(true);
     expect(cookie?.sameSite).toBe("lax");
     expect(cookie?.secure).toBe(false);
+    expect(encodeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        secret: "test-secret",
+        token: { accessToken: "a", refreshToken: "r" },
+      }),
+    );
+  });
+
+  it("uses the secure cookie name behind https", async () => {
+    process.env.NEXTAUTH_URL = "https://app.vanep.com.br";
+    const req = new NextRequest("https://app.vanep.com.br/api/admin/clients");
+    req.cookies.set("__Secure-next-auth.session-token.0", "old");
+    const response = NextResponse.json({});
+
+    await persistSession(req, response, { accessToken: "a" });
+
+    const cookie = response.cookies.get("__Secure-next-auth.session-token");
+    expect(cookie?.value).toBe("encoded");
+    expect(cookie?.secure).toBe(true);
+    const cleared = response.cookies.get("__Secure-next-auth.session-token.0");
+    expect(cleared?.value).toBe("");
+    expect(cleared?.secure).toBe(true);
   });
 
   it("clears the chunks left over from a previously larger session", async () => {
@@ -96,7 +117,7 @@ describe("persistSession", () => {
 
     await persistSession(req, response, { accessToken: "a" });
 
-    expect(response.cookies.get("next-auth.session-token.0")?.value).toHaveLength(4096 - 163);
+    expect(response.cookies.get("next-auth.session-token.0")?.value).toHaveLength(CHUNK_SIZE);
     expect(response.cookies.get("next-auth.session-token.1")).toBeDefined();
     expect(response.cookies.get("next-auth.session-token")?.value).toBe("");
   });

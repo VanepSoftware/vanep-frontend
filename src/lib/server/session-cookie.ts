@@ -2,32 +2,14 @@ import { encode } from "next-auth/jwt";
 import type { JWT } from "next-auth/jwt";
 import type { NextRequest, NextResponse } from "next/server";
 
-// NextAuth's own default, applied because authOptions does not set session.maxAge.
+import { sessionCookieName, sessionSecret } from "@/lib/server/oauth-session";
+
+// Default do NextAuth: authOptions não define session.maxAge.
 const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
-// Same budget NextAuth uses before splitting the session cookie: 4096 bytes minus its own estimate
-// of what the name and attributes take.
+// O NextAuth fatia o valor em 4096 − 163. 4096 é o limite de um cookie no
+// navegador; 163 é a folga que ele reserva para o nome e os atributos.
 const CHUNK_SIZE = 4096 - 163;
-
-function frontendUrl(): string {
-  const url = process.env.NEXTAUTH_URL;
-  if (!url) throw new Error("NEXTAUTH_URL must be set");
-  return url;
-}
-
-function secureCookiesEnabled(): boolean {
-  return frontendUrl().startsWith("https://");
-}
-
-function sessionSecret(): string {
-  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
-  if (!secret) throw new Error("AUTH_SECRET or NEXTAUTH_SECRET must be set");
-  return secret;
-}
-
-export function sessionCookieName(): string {
-  return secureCookiesEnabled() ? "__Secure-next-auth.session-token" : "next-auth.session-token";
-}
 
 export function chunkSessionValue(name: string, value: string): { name: string; value: string }[] {
   const chunkCount = Math.ceil(value.length / CHUNK_SIZE);
@@ -41,11 +23,13 @@ export function chunkSessionValue(name: string, value: string): { name: string; 
 }
 
 /**
- * Writes the session back to the browser.
+ * Regrava a sessão no formato do NextAuth, fatiando acima de ~4KB.
  *
- * The authorization server runs with `reuseRefreshTokens(false)`, so a refresh burns the token it
- * was given and returns a new one. Without this write the cookie keeps the burned token and the
- * next refresh fails with `invalid_grant`, which surfaces as a 401 on every later request.
+ * O login já passa pelo SessionStore, que fatia sozinho. O proxy, depois do
+ * refresh, regrava o cookie na mão. Sem fatiar, o navegador descarta o
+ * Set-Cookie quando o valor passa do limite e a sessão renovada se perde.
+ * Sem apagar o que ficou para trás, o getToken junta o cookie novo com os
+ * pedaços antigos — o nome e os `.0`, `.1` — e a descriptografia falha.
  */
 export async function persistSession(
   req: NextRequest,
@@ -53,36 +37,45 @@ export async function persistSession(
   token: JWT,
 ): Promise<void> {
   const name = sessionCookieName();
+  const secure = name.startsWith("__Secure-");
   const value = await encode({
     token,
     secret: sessionSecret(),
     maxAge: SESSION_MAX_AGE_SECONDS,
   });
   const chunks = chunkSessionValue(name, value);
+  const written = new Set(chunks.map((chunk) => chunk.name));
 
   for (const chunk of chunks) {
     response.cookies.set(chunk.name, chunk.value, {
       httpOnly: true,
       sameSite: "lax",
       path: "/",
-      secure: secureCookiesEnabled(),
+      secure,
       maxAge: SESSION_MAX_AGE_SECONDS,
     });
   }
 
-  clearStaleCookies(req, response, new Set(chunks.map((chunk) => chunk.name)));
+  clearStaleCookies(req, response, name, secure, written);
 }
 
-/**
- * A session that used to be chunked, or that stops being chunked, leaves cookies the browser would
- * still send. NextAuth would then reassemble a mix of old and new and fail to decrypt.
- */
-function clearStaleCookies(req: NextRequest, response: NextResponse, written: Set<string>): void {
-  const name = sessionCookieName();
+function clearStaleCookies(
+  req: NextRequest,
+  response: NextResponse,
+  name: string,
+  secure: boolean,
+  written: Set<string>,
+): void {
   for (const cookie of req.cookies.getAll()) {
     const isSessionCookie = cookie.name === name || cookie.name.startsWith(`${name}.`);
     if (isSessionCookie && !written.has(cookie.name)) {
-      response.cookies.delete(cookie.name);
+      response.cookies.delete({
+        name: cookie.name,
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure,
+      });
     }
   }
 }
