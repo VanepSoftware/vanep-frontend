@@ -566,6 +566,40 @@ const ptBR = {
         },
         documentOfVehicle: "{document} da van {plate}",
       },
+      decision: {
+        approve: "Aprovar cadastro",
+        reject: "Reprovar cadastro",
+        blockedIntro: "Para aprovar, falta:",
+        blocker: {
+          NO_ACTIVE_VEHICLE: "uma van ativa cadastrada",
+          CNH_CATEGORY: "CNH com categoria D ou E",
+          APPROVAL_STATUS: "o cadastro estar em análise",
+          requirement: "{requirement} ({state})",
+          vehicleRequirement: "{requirement} da van {plate} ({state})",
+        },
+        blockerState: {
+          MISSING: "não enviado",
+          PENDING: "pendente",
+          REJECTED: "reprovado",
+          EXPIRED: "vencido",
+          APPROVED: "aprovado",
+        },
+        approveTitle: "Aprovar o cadastro de {name}?",
+        approveDescription:
+          "O motorista passa a aparecer na busca e pode receber propostas. Ele é avisado por e-mail.",
+        approved: "Cadastro aprovado. O motorista foi avisado por e-mail.",
+        rejectTitle: "Reprovar o cadastro de {name}",
+        rejectDescription:
+          "O motorista é avisado por e-mail com o motivo. Para reprovar um documento, reprove só o documento: o cadastro continua em análise.",
+        reasonLegend: "Motivo",
+        reasonOther: "Outro motivo",
+        messageLabel: "Mensagem para o motorista",
+        messageOptional: "(opcional)",
+        messageRequired: "(obrigatória)",
+        messageCount: "{count}/{max}",
+        rejectConfirm: "Reprovar cadastro",
+        rejected: "Cadastro reprovado. O motorista foi avisado por e-mail.",
+      },
       /** O nome do requisito no meio de uma frase, com o artigo. */
       requirementInSentence: {
         DRIVER_LICENSE: "a CNH",
