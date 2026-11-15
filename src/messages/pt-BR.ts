@@ -450,6 +450,81 @@ const ptBR = {
       pageInfo: "Página {page} de {total}",
       totalInfo: "{total} cargo(s) no total",
     },
+    driverReview: {
+      requirement: {
+        DRIVER_LICENSE: "CNH",
+        SCHOOL_DRIVER_COURSE: "Curso especializado",
+        CRIMINAL_RECORD: "Certidão criminal",
+        MUNICIPAL_AUTHORIZATION: "Alvará municipal",
+        VEHICLE_REGISTRATION: "CRLV",
+        VEHICLE_INSPECTION: "Vistoria semestral",
+        SCHOOL_VEHICLE_AUTHORIZATION: "Autorização escolar",
+      },
+      complianceState: {
+        MISSING: "Não enviado",
+        PENDING: "Pendente",
+        APPROVED: "Aprovado",
+        REJECTED: "Reprovado",
+        EXPIRED: "Vencido",
+      },
+      documentStatus: {
+        PENDING: "Pendente",
+        APPROVED: "Aprovado",
+        REJECTED: "Reprovado",
+      },
+      approvalStatus: {
+        PENDING: "Cadastro incompleto",
+        UNDER_REVIEW: "Em análise",
+        APPROVED: "Aprovado",
+        REJECTED: "Recusado",
+      },
+      nextAction: {
+        READY_TO_APPROVE: "Pronto para aprovar",
+        ADMIN: "Esperando você",
+        DRIVER: "Esperando o motorista",
+        NONE: "Em dia",
+      },
+      documentRejectionReason: {
+        ILLEGIBLE: "Ilegível",
+        EXPIRED: "Vencido",
+        DATA_MISMATCH: "Dados não conferem",
+        WRONG_TYPE: "Documento errado",
+        INCOMPLETE: "Incompleto",
+        OTHER: "Outro motivo",
+      },
+      /**
+       * O que o motorista lê no e-mail da recusa (`document.rejection_reason.*` da API).
+       * Mudou lá, muda aqui. Em `OTHER` o e-mail mostra só a mensagem do admin.
+       */
+      documentRejectionDriverText: {
+        ILLEGIBLE:
+          "Não conseguimos ler o documento. Envie uma foto ou PDF nítido, com todas as informações visíveis.",
+        EXPIRED: "O documento está vencido. Envie a versão válida.",
+        DATA_MISMATCH: "Os dados do documento não conferem com o seu cadastro.",
+        WRONG_TYPE: "O arquivo enviado não é o documento pedido.",
+        INCOMPLETE: "O documento está incompleto. Envie todas as páginas ou os dois lados.",
+      },
+      driverRejectionReason: {
+        DATA_MISMATCH: "Cadastro não confere com os documentos",
+        NOT_ELIGIBLE: "Não atende aos requisitos do CTB",
+        DUPLICATE_ACCOUNT: "Conta duplicada",
+        OTHER: "Outro motivo",
+      },
+      errors: {
+        "document.review.reason_code_required": "Escolha o motivo da reprovação.",
+        "document.review.reason_required": "Escreva o motivo para o motorista.",
+        "document.review.file_required": "Não dá para aprovar um documento sem arquivo.",
+        "document.review.stale":
+          "Este documento mudou desde que você abriu. Recarregue para ver a versão atual.",
+        "document.submission.reviewed": "Este documento já foi decidido.",
+        "driver.onboarding.documents_not_approved":
+          "O cadastro ainda não pode ser aprovado. Veja o que falta.",
+        "driver.onboarding.not_under_review": "Este cadastro já foi decidido.",
+        "driver.rejection.reason.required": "Escreva o motivo da recusa.",
+        forbidden: "Você não tem permissão para fazer isso.",
+        generic: "Algo deu errado. Tente de novo.",
+      },
+    },
   },
 } as const;
 

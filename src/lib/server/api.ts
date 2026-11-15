@@ -106,8 +106,18 @@ export async function proxyMultipartUpload(
 }
 
 /**
+ * Repassa o `v` (token da mídia) da URL do arquivo para a API. Com ele a API
+ * responde com cache imutável; sem ele, `no-cache`.
+ */
+export function withMediaVersion(req: NextRequest, path: string): string {
+  const version = req.nextUrl.searchParams.get("v");
+  return version ? `${path}?v=${encodeURIComponent(version)}` : path;
+}
+
+/**
  * Para baixar binário (foto): a resposta não é texto, então o corpo precisa
  * passar como ArrayBuffer em vez do `response.text()` do proxyApiRequest.
+ * O `Cache-Control` é o da API, que sabe se a URL é de um conteúdo imutável.
  */
 export async function proxyBinaryDownload(req: NextRequest, path: string): Promise<NextResponse> {
   const auth = await requireAccessToken(req);
@@ -127,7 +137,7 @@ export async function proxyBinaryDownload(req: NextRequest, path: string): Promi
         status: response.status,
         headers: {
           "Content-Type": contentType,
-          "Cache-Control": "private, max-age=0, must-revalidate",
+          "Cache-Control": response.headers.get("Cache-Control") ?? "private, no-cache",
         },
       })
     : new NextResponse((await response.text()) || null, {
