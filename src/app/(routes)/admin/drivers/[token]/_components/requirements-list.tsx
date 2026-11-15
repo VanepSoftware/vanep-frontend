@@ -29,6 +29,7 @@ const ROW_GRID =
 const GUTTER = "px-4 @md:px-6";
 
 export type RequirementActionProps = {
+  driverToken: string;
   item: RequirementStatus;
   vehicle: ComplianceVehicle | null;
 };
@@ -68,7 +69,7 @@ export function RequirementsList({ detail, headerAction, RowAction }: Requiremen
             item={item}
             today={detail.asOf}
             renewal={renewalNote(detail, item)}
-            action={RowAction ? <RowAction item={item} vehicle={null} /> : null}
+            action={RowAction ? <RowAction driverToken={detail.driver.token} item={item} vehicle={null} /> : null}
           />
         ))}
       </ul>
@@ -95,7 +96,9 @@ export function RequirementsList({ detail, headerAction, RowAction }: Requiremen
                 item={item}
                 today={detail.asOf}
                 renewal={renewalNote(detail, item)}
-                action={RowAction ? <RowAction item={item} vehicle={vehicle} /> : null}
+                action={
+                  RowAction ? <RowAction driverToken={detail.driver.token} item={item} vehicle={vehicle} /> : null
+                }
               />
             ))}
           </ul>

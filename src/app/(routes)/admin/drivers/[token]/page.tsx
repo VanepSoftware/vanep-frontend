@@ -18,6 +18,7 @@ import { DriverData } from "./_components/driver-data";
 import { BlockerList, type DecisionOutcome, DriverDecision } from "./_components/driver-decision";
 import { DriverBreadcrumb, DriverHeader } from "./_components/driver-header";
 import { HistoryList } from "./_components/history-list";
+import { RequirementAction, ReviewAllLink } from "./_components/requirement-actions";
 import { RequirementsList } from "./_components/requirements-list";
 
 const messages = t("admin").driverReview;
@@ -62,7 +63,11 @@ export default function DriverCompliancePage() {
       <DriverHeader detail={detail} actions={<DriverDecision detail={detail} onOutcome={onOutcome} />} />
       <DriverData driver={detail.driver} />
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <RequirementsList detail={detail} />
+        <RequirementsList
+          detail={detail}
+          headerAction={<ReviewAllLink driverToken={detail.driver.token} pending={detail.reviewQueue.length} />}
+          RowAction={RequirementAction}
+        />
         <HistoryList history={detail.history} />
       </div>
     </div>

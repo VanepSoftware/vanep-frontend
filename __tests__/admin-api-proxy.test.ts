@@ -356,6 +356,21 @@ describe("proxyBinaryDownload", () => {
     expect(response.headers.get("Cache-Control")).toBe("private, max-age=86400, immutable");
   });
 
+  it("keeps the disposition and forbids content sniffing", async () => {
+    getTokenMock.mockResolvedValueOnce({ accessToken: "the-token" });
+    fetchMock.mockResolvedValueOnce(
+      new Response(new Uint8Array([1]), {
+        status: 200,
+        headers: { "Content-Type": "application/pdf", "Content-Disposition": 'inline; filename="m1"' },
+      }),
+    );
+
+    const response = await proxyBinaryDownload(request(), "/api/driver-documents/tok/file?v=m1");
+
+    expect(response.headers.get("Content-Disposition")).toBe('inline; filename="m1"');
+    expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+  });
+
   it("falls back to no-cache when the backend sends no cache policy", async () => {
     getTokenMock.mockResolvedValueOnce({ accessToken: "the-token" });
     fetchMock.mockResolvedValueOnce(new Response(new Uint8Array([1]), { status: 200 }));

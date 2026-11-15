@@ -115,6 +115,22 @@ export function withMediaVersion(req: NextRequest, path: string): string {
 }
 
 /**
+ * Os cabeçalhos de um arquivo repassado: o tipo e o cache da API, o
+ * `Content-Disposition` dela (inline) e `nosniff`, para o navegador nunca
+ * tratar um arquivo enviado por usuário como outro tipo ao abrir em nova aba.
+ */
+function binaryHeaders(response: Response, contentType: string): HeadersInit {
+  const headers: Record<string, string> = {
+    "Content-Type": contentType,
+    "Cache-Control": response.headers.get("Cache-Control") ?? "private, no-cache",
+    "X-Content-Type-Options": "nosniff",
+  };
+  const disposition = response.headers.get("Content-Disposition");
+  if (disposition) headers["Content-Disposition"] = disposition;
+  return headers;
+}
+
+/**
  * Para baixar binário (foto): a resposta não é texto, então o corpo precisa
  * passar como ArrayBuffer em vez do `response.text()` do proxyApiRequest.
  * O `Cache-Control` é o da API, que sabe se a URL é de um conteúdo imutável.
@@ -135,10 +151,7 @@ export async function proxyBinaryDownload(req: NextRequest, path: string): Promi
   const proxied = response.ok
     ? new NextResponse(await response.arrayBuffer(), {
         status: response.status,
-        headers: {
-          "Content-Type": contentType,
-          "Cache-Control": response.headers.get("Cache-Control") ?? "private, no-cache",
-        },
+        headers: binaryHeaders(response, contentType),
       })
     : new NextResponse((await response.text()) || null, {
         status: response.status,
