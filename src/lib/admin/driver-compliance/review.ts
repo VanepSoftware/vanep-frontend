@@ -1,6 +1,6 @@
 import { interpolate, t } from "@/lib/l10n";
 
-import { formatCpf, formatPlate, maskCpf, vehicleDescription } from "./driver-page";
+import { formatCpf, formatPlate, isAwaitingReview, maskCpf, vehicleDescription } from "./driver-page";
 import { expiryDistance, formatDate, formatDateTime, formatShortDateTime } from "./format";
 import type {
   ComplianceVehicle,
@@ -83,9 +83,13 @@ export function findSubmission(
   return null;
 }
 
-/** O envio que a linha do checklist abre: a renovação pendente, se há, ou o que conta. */
-export function rowSubmission(item: RequirementStatus): Submission | null {
-  return item.pending ?? item.current;
+/**
+ * O envio que a linha do checklist abre: a renovação, se ela está na fila de
+ * revisão; senão, o que conta (uma renovação sem arquivo não tem o que ver).
+ */
+export function rowSubmission(detail: DriverComplianceDetail, item: RequirementStatus): Submission | null {
+  if (isAwaitingReview(detail, item.pending)) return item.pending;
+  return item.current ?? item.pending;
 }
 
 export type QueuePosition = {

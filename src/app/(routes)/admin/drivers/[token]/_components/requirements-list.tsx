@@ -2,6 +2,7 @@ import { Chip } from "@/components/ui/chip";
 import {
   decisionNote,
   formatPlate,
+  renewalNote,
   requirementDetail,
   requirementExpiry,
   requirementsSummary,
@@ -22,7 +23,7 @@ const ROW_GRID =
   "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 px-6 py-3.5 sm:grid-cols-[minmax(0,1fr)_120px_150px_88px]";
 
 export type RequirementActionProps = {
-  driverToken: string;
+  detail: DriverComplianceDetail;
   item: RequirementStatus;
   vehicle: ComplianceVehicle | null;
 };
@@ -58,7 +59,8 @@ export function RequirementsList({ detail, headerAction, RowAction }: Requiremen
             key={item.requirement}
             item={item}
             today={detail.asOf}
-            action={RowAction ? <RowAction driverToken={detail.driver.token} item={item} vehicle={null} /> : null}
+            renewal={renewalNote(detail, item)}
+            action={RowAction ? <RowAction detail={detail} item={item} vehicle={null} /> : null}
           />
         ))}
       </ul>
@@ -84,8 +86,9 @@ export function RequirementsList({ detail, headerAction, RowAction }: Requiremen
                 key={item.requirement}
                 item={item}
                 today={detail.asOf}
+                renewal={renewalNote(detail, item)}
                 action={
-                  RowAction ? <RowAction driverToken={detail.driver.token} item={item} vehicle={vehicle} /> : null
+                  RowAction ? <RowAction detail={detail} item={item} vehicle={vehicle} /> : null
                 }
               />
             ))}
@@ -126,10 +129,12 @@ function GroupHeader({
 function RequirementRow({
   item,
   today,
+  renewal,
   action,
 }: {
   item: RequirementStatus;
   today: string;
+  renewal: string | null;
   action: React.ReactNode;
 }) {
   const expiry = requirementExpiry(item, today);
@@ -147,9 +152,7 @@ function RequirementRow({
           )}
         </div>
         <div className="truncate text-[13px] text-muted-foreground">{requirementDetail(item)}</div>
-        {item.pending && item.state !== "PENDING" && (
-          <div className="text-[13px] font-medium text-warning">{page.renewalPending}</div>
-        )}
+        {renewal && <div className="text-[13px] font-medium text-warning">{renewal}</div>}
         {note && <div className="text-[13px] text-muted-foreground">{note}</div>}
       </div>
       <span className="justify-self-end sm:justify-self-start">
