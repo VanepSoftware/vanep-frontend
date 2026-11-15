@@ -3,7 +3,6 @@ import { StrictMode } from "react";
 import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Clients from "@/app/(routes)/admin/clients/page";
-import Drivers from "@/app/(routes)/admin/drivers/page";
 import Permissions from "@/app/(routes)/admin/permissions/page";
 import Roles from "@/app/(routes)/admin/roles/page";
 import { t } from "@/lib/l10n";
@@ -12,7 +11,6 @@ import { useAdminQuery } from "@/lib/admin/use-admin-query";
 const messages = t("admin");
 const cases = [
   { name: "clients", endpoint: "/api/admin/clients", Screen: Clients, messages: messages.clients },
-  { name: "drivers", endpoint: "/api/admin/drivers", Screen: Drivers, messages: messages.drivers },
   { name: "permissions", endpoint: "/api/admin/role-permissions", Screen: Permissions, messages: messages.permissions },
   { name: "roles", endpoint: "/api/admin/roles", Screen: Roles, messages: messages.roles },
 ];

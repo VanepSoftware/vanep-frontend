@@ -29,6 +29,11 @@
 
   --success: #167a4c;
   --success-soft: #e7f5ee;
+
+  /* Aviso — pendente de revisão e prazo perto do fim */
+  --warning: #7a5200;
+  --warning-soft: #fdf4dc;
+  --warning-border: #e3c06a;
 }
 
 @theme inline {
@@ -51,6 +56,9 @@
   --color-danger-border: var(--danger-border);
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-border: var(--warning-border);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-display: var(--font-display);
