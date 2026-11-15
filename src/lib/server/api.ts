@@ -1,15 +1,10 @@
-import { encode, getToken } from "next-auth/jwt";
+import { getToken } from "next-auth/jwt";
 import type { JWT } from "next-auth/jwt";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import {
-  maybeRefreshAccessToken,
-  sessionCookieName,
-  sessionSecret,
-} from "@/lib/server/oauth-session";
-
-const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
+import { maybeRefreshAccessToken } from "@/lib/server/oauth-session";
+import { persistSession } from "@/lib/server/session-cookie";
 
 function apiBaseUrl(): string {
   return process.env.AUTH_URL ?? "";
@@ -31,26 +26,15 @@ async function requireAccessToken(req: NextRequest): Promise<Auth | null> {
   return { accessToken: fresh.accessToken, token: fresh, refreshed };
 }
 
-async function persistSession(response: NextResponse, token: JWT): Promise<NextResponse> {
-  const encoded = await encode({
-    token,
-    secret: sessionSecret(),
-    maxAge: SESSION_MAX_AGE_SECONDS,
-  });
-  response.cookies.set({
-    name: sessionCookieName(),
-    value: encoded,
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    secure: sessionCookieName().startsWith("__Secure-"),
-    maxAge: SESSION_MAX_AGE_SECONDS,
-  });
+async function withRefreshedSession(
+  req: NextRequest,
+  response: NextResponse,
+  auth: Auth,
+): Promise<NextResponse> {
+  if (auth.refreshed) {
+    await persistSession(req, response, auth.token);
+  }
   return response;
-}
-
-async function withRefreshedSession(response: NextResponse, auth: Auth): Promise<NextResponse> {
-  return auth.refreshed ? persistSession(response, auth.token) : response;
 }
 
 export async function proxyApiRequest(
@@ -84,7 +68,7 @@ export async function proxyApiRequest(
           },
         });
 
-  return withRefreshedSession(proxied, auth);
+  return withRefreshedSession(req, proxied, auth);
 }
 
 /**
@@ -118,7 +102,7 @@ export async function proxyMultipartUpload(
           },
         });
 
-  return withRefreshedSession(proxied, auth);
+  return withRefreshedSession(req, proxied, auth);
 }
 
 /**
@@ -151,5 +135,5 @@ export async function proxyBinaryDownload(req: NextRequest, path: string): Promi
         headers: { "Content-Type": contentType },
       });
 
-  return withRefreshedSession(proxied, auth);
+  return withRefreshedSession(req, proxied, auth);
 }
