@@ -22,6 +22,7 @@ const ROW_GRID =
   "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 px-6 py-3.5 sm:grid-cols-[minmax(0,1fr)_120px_150px_88px]";
 
 export type RequirementActionProps = {
+  driverToken: string;
   item: RequirementStatus;
   vehicle: ComplianceVehicle | null;
 };
@@ -57,7 +58,7 @@ export function RequirementsList({ detail, headerAction, RowAction }: Requiremen
             key={item.requirement}
             item={item}
             today={detail.asOf}
-            action={RowAction ? <RowAction item={item} vehicle={null} /> : null}
+            action={RowAction ? <RowAction driverToken={detail.driver.token} item={item} vehicle={null} /> : null}
           />
         ))}
       </ul>
@@ -83,7 +84,9 @@ export function RequirementsList({ detail, headerAction, RowAction }: Requiremen
                 key={item.requirement}
                 item={item}
                 today={detail.asOf}
-                action={RowAction ? <RowAction item={item} vehicle={vehicle} /> : null}
+                action={
+                  RowAction ? <RowAction driverToken={detail.driver.token} item={item} vehicle={vehicle} /> : null
+                }
               />
             ))}
           </ul>
