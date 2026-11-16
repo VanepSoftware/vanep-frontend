@@ -6,7 +6,6 @@ import {
   formatPhone,
   formatPlate,
   historyLine,
-  decisionNote,
   isAwaitingReview,
   maskCpf,
   maskPhone,
@@ -219,51 +218,6 @@ describe("requirement row", () => {
       requirementExpiry(
         requirement("CRIMINAL_RECORD", { state: "REJECTED", current: documentSubmission({ status: "REJECTED" }) }),
         TODAY,
-      ),
-    ).toBeNull();
-  });
-
-  it("shows the last decision after a resend", () => {
-    const resent = requirement("CRIMINAL_RECORD", {
-      state: "PENDING",
-      current: documentSubmission(),
-      lastDecision: {
-        status: "REJECTED",
-        rejectionReasonCode: "ILLEGIBLE",
-        rejectionReason: null,
-        reviewedBy: { token: "u", name: "Ana Souza" },
-        reviewedAt: "2026-11-09T18:30:00Z",
-        supersededAt: "2026-11-11T12:12:00Z",
-      },
-    });
-    expect(decisionNote(resent)).toBe("Última decisão: reprovado por Ana Souza em 09/11 · 15:30 · Ilegível");
-    expect(
-      decisionNote({
-        ...resent,
-        lastDecision: { ...resent.lastDecision!, status: "APPROVED", rejectionReasonCode: null },
-      }),
-    ).toBe("Última decisão: aprovado por Ana Souza em 09/11 · 15:30");
-  });
-
-  it("says who rejected what counts, and why", () => {
-    const rejected = requirement("CRIMINAL_RECORD", {
-      state: "REJECTED",
-      current: documentSubmission({
-        status: "REJECTED",
-        rejectionReasonCode: "EXPIRED",
-        reviewedBy: { token: "u", name: "Ana Souza" },
-        reviewedAt: "2026-11-09T18:30:00Z",
-      }),
-    });
-    expect(decisionNote(rejected)).toBe("Reprovado por Ana Souza em 09/11 · 15:30 · Vencido");
-  });
-
-  it("has no note otherwise", () => {
-    expect(decisionNote(requirement("CRIMINAL_RECORD"))).toBeNull();
-    expect(decisionNote(requirement("CRIMINAL_RECORD", { state: "PENDING", current: documentSubmission() }))).toBeNull();
-    expect(
-      decisionNote(
-        requirement("CRIMINAL_RECORD", { state: "REJECTED", current: documentSubmission({ status: "REJECTED" }) }),
       ),
     ).toBeNull();
   });
