@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   REASON_MAX_LENGTH,
   blockerText,
+  blockersSummary,
   canDecideRegistration,
   rejectionMessageError,
 } from "@/lib/admin/driver-compliance/decision";
@@ -15,6 +16,45 @@ describe("canDecideRegistration", () => {
     expect(canDecideRegistration(driver({ approvalStatus: "APPROVED" }))).toBe(false);
     expect(canDecideRegistration(driver({ approvalStatus: "REJECTED" }))).toBe(false);
     expect(canDecideRegistration(driver({ approvalStatus: "PENDING" }))).toBe(false);
+  });
+});
+
+describe("blockersSummary", () => {
+  const empty = { requirement: null, state: null, vehicleToken: null, plate: null };
+  const document = (state: "PENDING" | "EXPIRED" | "REJECTED" | "MISSING", kind = "DRIVER_REQUIREMENT" as const) => ({
+    ...empty,
+    kind,
+    requirement: "CRIMINAL_RECORD" as const,
+    state,
+  });
+
+  it("counts the documents when they share a state", () => {
+    const six = Array.from({ length: 6 }, () => document("PENDING"));
+    expect(blockersSummary(six)).toBe("Para aprovar, faltam 6 documentos pendentes.");
+    expect(blockersSummary([document("EXPIRED")])).toBe("Para aprovar, falta 1 documento vencido.");
+  });
+
+  it("breaks the count down by state", () => {
+    const blockers = [document("MISSING"), document("PENDING"), document("EXPIRED"), document("PENDING")];
+    expect(blockersSummary(blockers)).toBe(
+      "Para aprovar, faltam 4 documentos (2 pendentes, 1 vencido e 1 não enviado).",
+    );
+  });
+
+  it("keeps the blockers that are not documents", () => {
+    expect(blockersSummary([{ ...empty, kind: "NO_ACTIVE_VEHICLE" }])).toBe(
+      "Para aprovar, falta uma van ativa cadastrada.",
+    );
+    expect(
+      blockersSummary([
+        document("PENDING"),
+        { ...empty, kind: "CNH_CATEGORY", requirement: "DRIVER_LICENSE", state: "APPROVED" },
+      ]),
+    ).toBe("Para aprovar, faltam 1 documento pendente e CNH com categoria D ou E.");
+  });
+
+  it("is empty without blockers", () => {
+    expect(blockersSummary([])).toBe("");
   });
 });
 
