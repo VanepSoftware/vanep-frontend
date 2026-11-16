@@ -25,6 +25,7 @@ import { ApiProblemError } from "@/lib/admin/fetch-json";
 import { useJsonResource } from "@/lib/admin/use-json-resource";
 import { interpolate, t } from "@/lib/l10n";
 
+import { DriverBreadcrumb } from "../../../_components/driver-header";
 import { FileViewer } from "../../_components/file-viewer";
 import { type ReviewOutcome, ReviewPanel } from "../../_components/review-panel";
 
@@ -103,6 +104,7 @@ function ReviewHeader({
   position: QueuePosition | null;
 }) {
   const driverToken = detail.driver.token;
+  const document = messages.requirement[found.item.requirement];
   const owner = found.vehicle
     ? interpolate(review.vehicleDocument, { plate: formatPlate(found.vehicle.plate) })
     : review.driverDocument;
@@ -110,13 +112,11 @@ function ReviewHeader({
   return (
     <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
-        <Link href={driverHref(driverToken)} className="text-sm text-brand hover:text-brand-strong">
-          <span aria-hidden="true">← </span>
-          {detail.driver.name ?? messages.noName}
-        </Link>
-        <h1 className="mt-1 font-display text-2xl font-bold text-foreground">
-          {messages.requirement[found.item.requirement]}
-        </h1>
+        <DriverBreadcrumb
+          name={detail.driver.name ?? messages.noName}
+          child={{ driverHref: driverHref(driverToken), label: document }}
+        />
+        <h1 className="font-display text-2xl font-bold text-foreground">{document}</h1>
         <p className="text-sm text-muted-foreground">{owner}</p>
       </div>
 
