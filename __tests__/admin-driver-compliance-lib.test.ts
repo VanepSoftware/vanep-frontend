@@ -115,8 +115,8 @@ describe("urls", () => {
   it.each([
     ["/api/driver-documents/t1/file?v=m1", "/api/admin/driver-documents/t1/file?v=m1"],
     ["/api/vehicle-documents/t1/file?v=m1", "/api/admin/vehicle-documents/t1/file?v=m1"],
-    ["/api/driver-cnhs/t1/photo?v=m1", "/api/admin/driver-cnhs/t1/photo?v=m1"],
-    ["/api/driver-cnhs/t1/photo", "/api/admin/driver-cnhs/t1/photo"],
+    ["/api/driver-cnhs/t1/file?v=m1", "/api/admin/driver-cnhs/t1/file?v=m1"],
+    ["/api/driver-cnhs/t1/file", "/api/admin/driver-cnhs/t1/file"],
   ])("opens %s through the admin proxy", (fileUrl, expected) => {
     expect(adminFileUrl(fileUrl)).toBe(expected);
   });
@@ -128,7 +128,9 @@ describe("urls", () => {
     "/api/drivers/t1/photo",
     "/api/driver-documents/t1/file/../../roles",
     "/api/driver-documents/../file",
-    "/api/driver-cnhs/t1/photo?v=../x",
+    "/api/driver-cnhs/t1/file?v=../x",
+    // A rota antiga da CNH: o back responde 404.
+    "/api/driver-cnhs/t1/photo",
     "/api/driver-documents/t1/file?v=m1&x=2",
   ])("refuses %s", (fileUrl) => {
     expect(adminFileUrl(fileUrl)).toBeNull();

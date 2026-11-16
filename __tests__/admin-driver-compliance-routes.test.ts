@@ -20,7 +20,7 @@ import { PUT as decideVehicleDocument } from "@/app/api/admin/vehicle-documents/
 import { PUT as decideCnh } from "@/app/api/admin/driver-cnhs/[token]/status/route";
 import { GET as driverDocumentFile } from "@/app/api/admin/driver-documents/[token]/file/route";
 import { GET as vehicleDocumentFile } from "@/app/api/admin/vehicle-documents/[token]/file/route";
-import { GET as cnhPhoto } from "@/app/api/admin/driver-cnhs/[token]/photo/route";
+import { GET as cnhFile } from "@/app/api/admin/driver-cnhs/[token]/file/route";
 import { proxyApiRequest, proxyBinaryDownload } from "@/lib/server/api";
 
 const proxyMock = vi.mocked(proxyApiRequest);
@@ -106,7 +106,7 @@ describe("admin driver compliance routes", () => {
     it.each([
       ["driver document", driverDocumentFile, "/api/driver-documents/tok/file"],
       ["vehicle document", vehicleDocumentFile, "/api/vehicle-documents/tok/file"],
-      ["CNH photo", cnhPhoto, "/api/driver-cnhs/tok/photo"],
+      ["CNH file", cnhFile, "/api/driver-cnhs/tok/file"],
     ] as const)("downloads the %s keeping the media version", async (_name, handler, path) => {
       const req = new NextRequest(`${BASE}${path.replace("/api", "")}?v=media-1`);
       await handler(req, ctx("tok"));
