@@ -6,7 +6,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
 import {
   DRIVER_REJECTION_REASONS,
-  blockerText,
+  blockersSummary,
   canDecideRegistration,
   rejectionMessageError,
 } from "@/lib/admin/driver-compliance/decision";
@@ -121,8 +121,7 @@ export function BlockerList({
 }) {
   return (
     <div id={id} className={`text-[13px] ${align === "end" ? "text-right text-muted-foreground" : "mt-1"}`}>
-      <span>{decision.blockedIntro} </span>
-      {blockers.map(blockerText).join(" · ")}
+      {blockersSummary(blockers)}
     </div>
   );
 }

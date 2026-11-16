@@ -570,7 +570,23 @@ const ptBR = {
       decision: {
         approve: "Aprovar cadastro",
         reject: "Reprovar cadastro",
-        blockedIntro: "Para aprovar, falta:",
+        blockedSummary: { one: "Para aprovar, falta {items}.", other: "Para aprovar, faltam {items}." },
+        documents: { one: "1 documento", other: "{count} documentos" },
+        documentsByState: "{documents} ({states})",
+        documentsInState: {
+          PENDING: { one: "1 documento pendente", other: "{count} documentos pendentes" },
+          EXPIRED: { one: "1 documento vencido", other: "{count} documentos vencidos" },
+          REJECTED: { one: "1 documento reprovado", other: "{count} documentos reprovados" },
+          MISSING: { one: "1 documento não enviado", other: "{count} documentos não enviados" },
+          APPROVED: { one: "1 documento aprovado", other: "{count} documentos aprovados" },
+        },
+        stateCount: {
+          PENDING: { one: "1 pendente", other: "{count} pendentes" },
+          EXPIRED: { one: "1 vencido", other: "{count} vencidos" },
+          REJECTED: { one: "1 reprovado", other: "{count} reprovados" },
+          MISSING: { one: "1 não enviado", other: "{count} não enviados" },
+          APPROVED: { one: "1 aprovado", other: "{count} aprovados" },
+        },
         blocker: {
           NO_ACTIVE_VEHICLE: "uma van ativa cadastrada",
           CNH_CATEGORY: "CNH com categoria D ou E",
