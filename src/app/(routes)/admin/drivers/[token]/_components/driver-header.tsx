@@ -15,19 +15,47 @@ type DriverHeaderProps = {
   actions?: React.ReactNode;
 };
 
-export function DriverBreadcrumb({ name }: { name: string }) {
+type DriverBreadcrumbProps = {
+  name: string;
+  /**
+   * Abaixo da página do motorista (a revisão de um documento): o nome vira
+   * link para ela e o documento é a página atual.
+   */
+  child?: { driverHref: string; label: string };
+};
+
+/** `Motoristas / Nome` na página do motorista; `Motoristas / Nome / Documento` abaixo dela. */
+export function DriverBreadcrumb({ name, child }: DriverBreadcrumbProps) {
   return (
-    <nav aria-label={messages.driver.breadcrumb} className="mb-4 flex items-center gap-2 text-sm">
-      <Link href="/admin/drivers" className="text-brand hover:text-brand-strong">
+    <nav aria-label={messages.driver.breadcrumb} className="mb-4 flex min-w-0 items-center gap-2 text-sm">
+      <Link href="/admin/drivers" className="shrink-0 text-brand hover:text-brand-strong">
         {messages.queue.title}
       </Link>
-      <span aria-hidden="true" className="text-border-strong">
-        /
-      </span>
-      <span aria-current="page" className="truncate text-muted-foreground">
-        {name}
-      </span>
+      <Separator />
+      {child ? (
+        <>
+          <Link href={child.driverHref} className="truncate text-brand hover:text-brand-strong">
+            {name}
+          </Link>
+          <Separator />
+          <span aria-current="page" className="truncate text-muted-foreground">
+            {child.label}
+          </span>
+        </>
+      ) : (
+        <span aria-current="page" className="truncate text-muted-foreground">
+          {name}
+        </span>
+      )}
     </nav>
+  );
+}
+
+function Separator() {
+  return (
+    <span aria-hidden="true" className="text-border-strong">
+      /
+    </span>
   );
 }
 
