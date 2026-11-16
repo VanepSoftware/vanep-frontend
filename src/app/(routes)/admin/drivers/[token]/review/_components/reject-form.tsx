@@ -2,13 +2,12 @@
 
 import { useId, useState } from "react";
 
+import { RejectIcon } from "@/components/ui/decision-icons";
 import { rejectionMessageError } from "@/lib/admin/driver-compliance/decision";
-import { driverRejectionPreview } from "@/lib/admin/driver-compliance/messages";
 import {
   DOCUMENT_REJECTION_REASONS,
   type FoundSubmission,
   rejectionConsequence,
-  rejectionPreviewSubject,
 } from "@/lib/admin/driver-compliance/review";
 import type {
   DocumentRejectionReason,
@@ -31,18 +30,13 @@ type RejectFormProps = {
   onCancel: () => void;
 };
 
-/**
- * Reprovar um envio: o motivo estruturado, a mensagem (obrigatória só em
- * "Outro motivo") e a prévia do que o motorista lê no e-mail, com os mesmos
- * textos da API (`document.rejection_reason.*`).
- */
+/** Reprovar um envio: o motivo estruturado e a mensagem (obrigatória só em "Outro motivo"). */
 export function RejectForm({ detail, found, busy, error, onSubmit, onCancel }: RejectFormProps) {
   const titleId = useId();
   const [code, setCode] = useState<DocumentRejectionReason | null>(null);
   const [message, setMessage] = useState("");
   const invalid = rejectionMessageError(code, message);
   const consequence = rejectionConsequence(detail, found);
-  const preview = code ? driverRejectionPreview(code, message) : [];
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -77,24 +71,6 @@ export function RejectForm({ detail, found, busy, error, onSubmit, onCancel }: R
           requiredWith="OTHER"
           disabled={busy}
         />
-
-        {code && (
-          <div aria-live="polite" className="mt-2 rounded-xl border border-border bg-background-deep p-4">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-              {form.previewTitle}
-            </p>
-            <p className="mt-2 text-sm font-semibold text-foreground">{rejectionPreviewSubject(found)}</p>
-            {preview.length > 0 ? (
-              preview.map((paragraph, index) => (
-                <p key={index} className="mt-1 whitespace-pre-line text-sm text-foreground">
-                  {paragraph}
-                </p>
-              ))
-            ) : (
-              <p className="mt-1 text-sm italic text-muted-foreground">{form.previewEmpty}</p>
-            )}
-          </div>
-        )}
       </div>
 
       <footer className="border-t border-border p-4">
@@ -115,8 +91,9 @@ export function RejectForm({ detail, found, busy, error, onSubmit, onCancel }: R
           <button
             type="submit"
             disabled={busy || invalid != null}
-            className="h-10 rounded-lg bg-danger px-5 text-sm font-semibold text-white shadow-sm hover:brightness-110 disabled:opacity-50"
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-danger px-5 text-sm font-semibold text-white shadow-sm hover:brightness-110 disabled:opacity-50"
           >
+            {!busy && <RejectIcon />}
             {busy ? form.rejecting : form.confirm}
           </button>
         </div>

@@ -14,10 +14,10 @@ import {
   queuePosition,
   registrationChecks,
   rejectionConsequence,
-  rejectionPreviewSubject,
   reviewEntryHref,
   reviewHref,
   rowSubmission,
+  submissionInSentence,
   submissionFacts,
   viewerKind,
 } from "@/lib/admin/driver-compliance/review";
@@ -276,13 +276,13 @@ describe("rejecting", () => {
     ]);
   });
 
-  it("names the document and the van in the preview", () => {
+  it("names the document with its driver or its van", () => {
     const page = detail();
-    expect(rejectionPreviewSubject(findSubmission(page, "DRIVER_DOCUMENT", "doc1")!)).toBe(
-      "Documento reprovado: Certidão criminal",
+    expect(submissionInSentence(page, findSubmission(page, "DRIVER_DOCUMENT", "doc1")!)).toBe(
+      "a certidão criminal de Fábio Teixeira",
     );
-    expect(rejectionPreviewSubject(findSubmission(page, "VEHICLE_DOCUMENT", "vst1")!)).toBe(
-      "Documento da van ABC-1D23 reprovado: Vistoria semestral",
+    expect(submissionInSentence(page, findSubmission(page, "VEHICLE_DOCUMENT", "vst1")!)).toBe(
+      "a vistoria semestral da van ABC-1D23",
     );
   });
 

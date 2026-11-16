@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { readApiProblem } from "@/lib/admin/api-problem";
-import { driverRejectionPreview, problemMessage } from "@/lib/admin/driver-compliance/messages";
+import { problemMessage } from "@/lib/admin/driver-compliance/messages";
 import { adminFileUrl, submissionStatusUrl } from "@/lib/admin/driver-compliance/urls";
 
 function problem(status: number, body?: unknown): Response {
@@ -86,28 +86,6 @@ describe("problemMessage", () => {
     expect(problemMessage({ ...base, status: 500, code: null, detail: null })).toBe(
       "Algo deu errado. Tente de novo.",
     );
-  });
-});
-
-describe("driverRejectionPreview", () => {
-  it("shows the reason's text and the admin's note below it", () => {
-    expect(driverRejectionPreview("EXPIRED", "  Venceu em outubro  ")).toEqual([
-      "O documento está vencido. Envie a versão válida.",
-      "Venceu em outubro",
-    ]);
-  });
-
-  it("shows only the reason's text without a note", () => {
-    expect(driverRejectionPreview("WRONG_TYPE", "   ")).toEqual([
-      "O arquivo enviado não é o documento pedido.",
-    ]);
-  });
-
-  it("shows only the admin's message for another reason", () => {
-    expect(driverRejectionPreview("OTHER", "Foto de outra pessoa")).toEqual([
-      "Foto de outra pessoa",
-    ]);
-    expect(driverRejectionPreview("OTHER", null)).toEqual([]);
   });
 });
 

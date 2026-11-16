@@ -243,11 +243,13 @@ export const DOCUMENT_REJECTION_REASONS: readonly DocumentRejectionReason[] = [
 ];
 
 /** O assunto da prévia: o nome do documento e, se é da van, a placa. */
-export function rejectionPreviewSubject(found: FoundSubmission): string {
-  const document = messages.requirement[found.item.requirement];
-  const form = review.rejectForm;
-  if (!found.vehicle) return interpolate(form.previewSubject, { document });
-  return interpolate(form.previewSubjectVehicle, { document, plate: formatPlate(found.vehicle.plate) });
+/** O documento numa frase: `o CRLV da van ABC-1D23`, `a CNH de Ana Souza`. */
+export function submissionInSentence(detail: DriverComplianceDetail, found: FoundSubmission): string {
+  const document = messages.requirementInSentence[found.item.requirement];
+  if (found.vehicle) {
+    return interpolate(messages.driver.documentOfVehicle, { document, plate: formatPlate(found.vehicle.plate) });
+  }
+  return interpolate(review.documentOfDriver, { document, name: detail.driver.name ?? messages.noName });
 }
 
 /**

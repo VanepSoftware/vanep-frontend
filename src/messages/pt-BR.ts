@@ -669,16 +669,23 @@ const ptBR = {
         approve: "Aprovar",
         reject: "Reprovar",
         approving: "Aprovando...",
+        documentOfDriver: "{document} de {name}",
+        confirmApprove: {
+          title: "Aprovar {document}?",
+          description: "O documento passa a contar no cadastro. Depois, a revisão segue para o próximo pendente.",
+          confirm: "Aprovar",
+        },
+        confirmReject: {
+          title: "Reprovar {document}?",
+          description: "O motorista recebe o motivo por e-mail e pode enviar o documento de novo.",
+          confirm: "Reprovar",
+        },
         sizes: { bytes: "{value} B", kb: "{value} KB", mb: "{value} MB" },
         rejectForm: {
           title: "Reprovar documento",
           description: "O motorista recebe o motivo por e-mail e pode enviar o documento de novo.",
           underReview: "O cadastro continua em análise.",
           keepsApproved: "O documento aprovado antes continua valendo até um novo ser aprovado.",
-          previewTitle: "O motorista vai ver",
-          previewSubject: "Documento reprovado: {document}",
-          previewSubjectVehicle: "Documento da van {plate} reprovado: {document}",
-          previewEmpty: "Escreva a mensagem para o motorista.",
           cancel: "Cancelar",
           confirm: "Reprovar",
           rejecting: "Reprovando...",
@@ -762,18 +769,6 @@ const ptBR = {
         WRONG_TYPE: "Documento errado",
         INCOMPLETE: "Incompleto",
         OTHER: "Outro motivo",
-      },
-      /**
-       * O que o motorista lê no e-mail da recusa (`document.rejection_reason.*` da API).
-       * Mudou lá, muda aqui. Em `OTHER` o e-mail mostra só a mensagem do admin.
-       */
-      documentRejectionDriverText: {
-        ILLEGIBLE:
-          "Não conseguimos ler o documento. Envie uma foto ou PDF nítido, com todas as informações visíveis.",
-        EXPIRED: "O documento está vencido. Envie a versão válida.",
-        DATA_MISMATCH: "Os dados do documento não conferem com o seu cadastro.",
-        WRONG_TYPE: "O arquivo enviado não é o documento pedido.",
-        INCOMPLETE: "O documento está incompleto. Envie todas as páginas ou os dois lados.",
       },
       driverRejectionReason: {
         DATA_MISMATCH: "Cadastro não confere com os documentos",
