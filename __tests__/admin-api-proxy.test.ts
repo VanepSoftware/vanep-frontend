@@ -342,6 +342,29 @@ describe("proxyBinaryDownload", () => {
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes);
   });
 
+  it("keeps the backend cache policy so immutable media stays cached", async () => {
+    getTokenMock.mockResolvedValueOnce({ accessToken: "the-token" });
+    fetchMock.mockResolvedValueOnce(
+      new Response(new Uint8Array([1]), {
+        status: 200,
+        headers: { "Cache-Control": "private, max-age=86400, immutable" },
+      }),
+    );
+
+    const response = await proxyBinaryDownload(request(), "/api/driver-documents/tok/file?v=m1");
+
+    expect(response.headers.get("Cache-Control")).toBe("private, max-age=86400, immutable");
+  });
+
+  it("falls back to no-cache when the backend sends no cache policy", async () => {
+    getTokenMock.mockResolvedValueOnce({ accessToken: "the-token" });
+    fetchMock.mockResolvedValueOnce(new Response(new Uint8Array([1]), { status: 200 }));
+
+    const response = await proxyBinaryDownload(request(), "/api/clients/tok/photo");
+
+    expect(response.headers.get("Cache-Control")).toBe("private, no-cache");
+  });
+
   it("propagates backend error statuses as text instead of binary", async () => {
     getTokenMock.mockResolvedValueOnce({ accessToken: "the-token" });
     fetchMock.mockResolvedValueOnce(
