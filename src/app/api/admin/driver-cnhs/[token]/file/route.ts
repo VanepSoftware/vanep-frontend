@@ -8,6 +8,6 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
   const { token } = await params;
   return proxyBinaryDownload(
     req,
-    withMediaVersion(req, `/api/driver-cnhs/${encodeURIComponent(token)}/photo`),
+    withMediaVersion(req, `/api/driver-cnhs/${encodeURIComponent(token)}/file`),
   );
 }

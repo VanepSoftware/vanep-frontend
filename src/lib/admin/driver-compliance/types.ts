@@ -125,7 +125,7 @@ export type DocumentSubmission = SubmissionBase & {
   kind: "DRIVER_DOCUMENT" | "VEHICLE_DOCUMENT";
 };
 
-/** Na CNH, `expiresAt` é a `validUntil` e o arquivo é a foto. */
+/** Na CNH, `expiresAt` é a `validUntil`. O arquivo pode ser imagem ou PDF, como nos documentos. */
 export type CnhSubmission = SubmissionBase & {
   kind: "DRIVER_CNH";
   category: string;
