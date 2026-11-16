@@ -1,6 +1,5 @@
 import { Chip } from "@/components/ui/chip";
 import {
-  decisionNote,
   formatPlate,
   renewalNote,
   requirementDetail,
@@ -135,7 +134,6 @@ function RequirementRow({
   action: React.ReactNode;
 }) {
   const expiry = requirementExpiry(item, today);
-  const note = decisionNote(item);
 
   return (
     <li className={`${ROW_GRID} border-t border-border/60`}>
@@ -150,7 +148,6 @@ function RequirementRow({
         </div>
         <div className="truncate text-[13px] text-muted-foreground">{requirementDetail(item)}</div>
         {renewal && <div className="text-[13px] font-medium text-warning">{renewal}</div>}
-        {note && <div className="text-[13px] text-muted-foreground">{note}</div>}
       </div>
       <span className="justify-self-end sm:justify-self-start">
         <Chip tone={complianceStateTone(item.state)}>{messages.complianceState[item.state]}</Chip>

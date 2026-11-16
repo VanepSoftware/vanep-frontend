@@ -8,7 +8,6 @@ import type {
   CredentialRequirement,
   DriverComplianceDetail,
   HistoryEvent,
-  LastDecision,
   RequirementStatus,
   Submission,
   UserRef,
@@ -180,38 +179,6 @@ export function requirementExpiry(item: RequirementStatus, today: string): strin
   if (current.expiresAt < today) return interpolate(page.expiredOn, { date });
   if (current.kind === "DRIVER_CNH") return interpolate(page.validUntil, { date });
   return interpolate(page.expiresOn, { date });
-}
-
-/** O que um envio e uma última decisão têm em comum. */
-type Decision = Pick<LastDecision, "status" | "rejectionReasonCode" | "reviewedBy" | "reviewedAt">;
-
-function decisionText(template: string, decision: Decision): string | null {
-  if (!decision.reviewedAt) return null;
-  const text = interpolate(template, {
-    status: messages.documentStatus[decision.status].toLowerCase(),
-    actor: actorName(decision.reviewedBy),
-    at: formatShortDateTime(decision.reviewedAt),
-  });
-  if (!decision.rejectionReasonCode) return text;
-  return interpolate(page.lastDecisionReason, {
-    decision: text,
-    reason: messages.documentRejectionReason[decision.rejectionReasonCode],
-  });
-}
-
-/**
- * A decisão que explica a linha:
- * - reprovado: quem reprovou o envio que conta, quando e por quê;
- * - pendente depois de um reenvio: a decisão do envio substituído.
- */
-export function decisionNote(item: RequirementStatus): string | null {
-  if (item.state === "REJECTED" && item.current) {
-    return decisionText(page.rejectedBy, item.current);
-  }
-  if (item.state === "PENDING" && item.lastDecision) {
-    return decisionText(page.lastDecision, item.lastDecision);
-  }
-  return null;
 }
 
 // ---------------------------------------------------------------- histórico
