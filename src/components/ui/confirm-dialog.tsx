@@ -13,8 +13,13 @@ type ConfirmDialogProps = {
   description: string;
   confirmLabel?: string;
   busy?: boolean;
-  /** `danger` para excluir ou recusar; `brand` para uma ação que segue o fluxo, como aprovar. */
-  tone?: "danger" | "brand";
+  /**
+   * `danger` para excluir ou recusar; `brand` para uma ação que segue o fluxo;
+   * `success` quando o botão que abriu o diálogo já é verde (aprovar um documento).
+   */
+  tone?: "danger" | "brand" | "success";
+  /** Ícone antes do rótulo do botão de confirmar, igual ao do botão que abriu o diálogo. */
+  icon?: React.ReactNode;
   /** Um erro da última tentativa, mostrado dentro do diálogo. */
   error?: string | null;
   onConfirm: () => void;
@@ -24,6 +29,7 @@ type ConfirmDialogProps = {
 const CONFIRM_CLASS = {
   danger: "bg-danger text-white",
   brand: "bg-brand text-brand-foreground",
+  success: "bg-success text-white",
 } as const;
 
 export function ConfirmDialog({
@@ -34,6 +40,7 @@ export function ConfirmDialog({
   busy = false,
   tone = "danger",
   error = null,
+  icon,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -65,8 +72,9 @@ export function ConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition-all duration-200 hover:brightness-110 hover:shadow-md active:scale-[0.97] active:shadow-sm disabled:opacity-50 ${CONFIRM_CLASS[tone]}`}
+            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition-all duration-200 hover:brightness-110 hover:shadow-md active:scale-[0.97] active:shadow-sm disabled:opacity-50 ${CONFIRM_CLASS[tone]}`}
           >
+            {!busy && icon}
             {busy ? common.loading : (confirmLabel ?? common.confirm)}
           </button>
         </div>

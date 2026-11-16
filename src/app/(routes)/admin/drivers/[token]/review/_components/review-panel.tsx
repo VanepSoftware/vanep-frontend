@@ -3,6 +3,8 @@
 import { useId, useState } from "react";
 
 import { Chip } from "@/components/ui/chip";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ApproveIcon, RejectIcon } from "@/components/ui/decision-icons";
 import { problemMessage } from "@/lib/admin/driver-compliance/messages";
 import {
   type Fact,
@@ -10,12 +12,13 @@ import {
   decisionLine,
   registrationChecks,
   submissionFacts,
+  submissionInSentence,
 } from "@/lib/admin/driver-compliance/review";
 import { documentStatusTone } from "@/lib/admin/driver-compliance/tone";
 import type { DriverComplianceDetail, SubmissionStatusRequest } from "@/lib/admin/driver-compliance/types";
 import { submissionStatusUrl } from "@/lib/admin/driver-compliance/urls";
 import { ApiProblemError, fetchJson } from "@/lib/admin/fetch-json";
-import { t } from "@/lib/l10n";
+import { interpolate, t } from "@/lib/l10n";
 
 import { RejectForm } from "./reject-form";
 
@@ -43,6 +46,8 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [revealDocument, setRevealDocument] = useState(false);
+  /** A decisão esperando o "tem certeza?": aprovar, ou reprovar com o motivo já escolhido. */
+  const [confirming, setConfirming] = useState<SubmissionStatusRequest | null>(null);
   const pending = submission.status === "PENDING";
   // A API recusa aprovar sem arquivo (422); a tela já sabe e nem oferece.
   const hasFile = submission.fileUrl != null;
@@ -68,8 +73,26 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
       }
     } finally {
       setBusy(false);
+      setConfirming(null);
     }
   }
+
+  const document = submissionInSentence(detail, found);
+  const rejecting = confirming?.status === "REJECTED";
+  const confirmText = rejecting ? review.confirmReject : review.confirmApprove;
+  const confirmDialog = (
+    <ConfirmDialog
+      open={confirming != null}
+      busy={busy}
+      tone={rejecting ? "danger" : "success"}
+      icon={rejecting ? <RejectIcon /> : <ApproveIcon />}
+      title={interpolate(confirmText.title, { document })}
+      description={confirmText.description}
+      confirmLabel={confirmText.confirm}
+      onConfirm={() => confirming && void decide(confirming)}
+      onCancel={() => setConfirming(null)}
+    />
+  );
 
   if (pending && mode === "reject") {
     return (
@@ -79,12 +102,16 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
           found={found}
           busy={busy}
           error={error}
-          onSubmit={(body) => void decide(body)}
+          onSubmit={(body) => {
+            setError(null);
+            setConfirming(body);
+          }}
           onCancel={() => {
             setError(null);
             setMode("facts");
           }}
         />
+        {confirmDialog}
       </aside>
     );
   }
@@ -143,22 +170,28 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
                 setMode("reject");
               }}
               disabled={busy}
-              className="h-10 rounded-lg border border-danger-border px-5 text-sm font-semibold text-danger hover:border-danger hover:bg-danger-soft disabled:opacity-50"
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-danger-border px-5 text-sm font-semibold text-danger hover:border-danger hover:bg-danger-soft disabled:opacity-50"
             >
+              <RejectIcon />
               {review.reject}
             </button>
             <button
               type="button"
-              onClick={() => void decide({ status: "APPROVED", version: submission.version })}
+              onClick={() => {
+                setError(null);
+                setConfirming({ status: "APPROVED", version: submission.version });
+              }}
               disabled={busy || !hasFile}
               aria-describedby={hasFile ? undefined : blockedId}
-              className="h-10 rounded-lg bg-success px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:brightness-110 disabled:opacity-50"
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-success px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:brightness-110 disabled:opacity-50"
             >
+              {!busy && <ApproveIcon />}
               {busy ? review.approving : review.approve}
             </button>
           </div>
         </footer>
       )}
+      {confirmDialog}
     </aside>
   );
 }
