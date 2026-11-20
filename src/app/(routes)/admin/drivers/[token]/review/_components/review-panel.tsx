@@ -15,7 +15,10 @@ import {
   submissionInSentence,
 } from "@/lib/admin/driver-compliance/review";
 import { documentStatusTone } from "@/lib/admin/driver-compliance/tone";
-import type { DriverComplianceDetail, SubmissionStatusRequest } from "@/lib/admin/driver-compliance/types";
+import type {
+  DriverComplianceDetail,
+  SubmissionStatusRequest,
+} from "@/lib/admin/driver-compliance/types";
 import { submissionStatusUrl } from "@/lib/admin/driver-compliance/urls";
 import { ApiProblemError, fetchJson } from "@/lib/admin/fetch-json";
 import { interpolate, t } from "@/lib/l10n";
@@ -26,7 +29,8 @@ const messages = t("admin").driverReview;
 const review = messages.review;
 
 /** A decisão foi gravada, ou a API recusou porque o envio mudou e a tela tem de recarregar. */
-export type ReviewOutcome = { kind: "decided" } | { kind: "stale"; message: string };
+export type ReviewOutcome =
+  { kind: "decided" } | { kind: "stale"; message: string };
 
 type ReviewPanelProps = {
   detail: DriverComplianceDetail;
@@ -37,7 +41,10 @@ type ReviewPanelProps = {
 /** Os erros que dizem que a tela está velha: outra pessoa decidiu ou o motorista trocou o arquivo. */
 function isStale(error: unknown): error is ApiProblemError {
   if (!(error instanceof ApiProblemError)) return false;
-  return error.problem.code === "document.review.stale" || error.problem.code === "document.submission.reviewed";
+  return (
+    error.problem.code === "document.review.stale" ||
+    error.problem.code === "document.submission.reviewed"
+  );
 }
 
 export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
@@ -47,13 +54,16 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [revealDocument, setRevealDocument] = useState(false);
   /** A decisão esperando o "tem certeza?": aprovar, ou reprovar com o motivo já escolhido. */
-  const [confirming, setConfirming] = useState<SubmissionStatusRequest | null>(null);
+  const [confirming, setConfirming] = useState<SubmissionStatusRequest | null>(
+    null,
+  );
   const pending = submission.status === "PENDING";
   // A API recusa aprovar sem arquivo (422); a tela já sabe e nem oferece.
   const hasFile = submission.fileUrl != null;
   const blockedId = useId();
   const decided = decisionLine(submission);
-  const last = pending && item.lastDecision ? decisionLine(item.lastDecision) : null;
+  const last =
+    pending && item.lastDecision ? decisionLine(item.lastDecision) : null;
 
   /** Aprovar e reprovar: o mesmo `PUT`, com a `version` que o admin viu. */
   async function decide(body: SubmissionStatusRequest) {
@@ -69,7 +79,11 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
       if (isStale(caught)) {
         onOutcome({ kind: "stale", message: problemMessage(caught.problem) });
       } else {
-        setError(caught instanceof ApiProblemError ? problemMessage(caught.problem) : messages.errors.generic);
+        setError(
+          caught instanceof ApiProblemError
+            ? problemMessage(caught.problem)
+            : messages.errors.generic,
+        );
       }
     } finally {
       setBusy(false);
@@ -96,7 +110,10 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
 
   if (pending && mode === "reject") {
     return (
-      <aside aria-label={review.rejectForm.title} className="flex flex-col rounded-2xl border border-border bg-background">
+      <aside
+        aria-label={review.rejectForm.title}
+        className="flex flex-col rounded-2xl border border-border bg-background"
+      >
         <RejectForm
           detail={detail}
           found={found}
@@ -117,17 +134,26 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
   }
 
   return (
-    <aside aria-label={review.facts.title} className="flex flex-col rounded-2xl border border-border bg-background">
+    <aside
+      aria-label={review.facts.title}
+      className="flex flex-col rounded-2xl border border-border bg-background"
+    >
       <div className="flex-1 p-6">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display text-base font-bold text-foreground">{review.facts.title}</h2>
-          <Chip tone={documentStatusTone(submission.status)}>{messages.documentStatus[submission.status]}</Chip>
+          <h2 className="font-display text-base font-bold text-foreground">
+            {review.facts.title}
+          </h2>
+          <Chip tone={documentStatusTone(submission.status)}>
+            {messages.documentStatus[submission.status]}
+          </Chip>
         </div>
         <FactList facts={submissionFacts(found, detail.asOf)} />
 
         <div className="mt-6 rounded-xl bg-background-deep p-4">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold text-foreground">{review.checks.title}</h3>
+            <h3 className="text-sm font-semibold text-foreground">
+              {review.checks.title}
+            </h3>
             {!found.vehicle && detail.driver.document && (
               <button
                 type="button"
@@ -143,22 +169,43 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
               </button>
             )}
           </div>
-          <FactList facts={registrationChecks(detail, found, revealDocument)} compact />
+          <FactList
+            facts={registrationChecks(detail, found, revealDocument)}
+            compact
+          />
         </div>
 
-        {decided && <DecisionBlock title={review.decidedTitle} line={decided} />}
-        {last && <DecisionBlock title={review.lastDecisionTitle} line={last} note={review.lastDecisionNote} />}
+        {decided && (
+          <DecisionBlock title={review.decidedTitle} line={decided} />
+        )}
+        {last && (
+          <DecisionBlock
+            title={review.lastDecisionTitle}
+            line={last}
+            note={
+              item.lastDecision?.supersededAt
+                ? review.lastDecisionNote
+                : undefined
+            }
+          />
+        )}
       </div>
 
       {pending && (
         <footer className="border-t border-border p-4">
           {error && (
-            <p role="alert" className="mb-3 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">
+            <p
+              role="alert"
+              className="mb-3 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger"
+            >
               {error}
             </p>
           )}
           {!hasFile && (
-            <p id={blockedId} className="mb-3 text-[13px] text-muted-foreground">
+            <p
+              id={blockedId}
+              className="mb-3 text-[13px] text-muted-foreground"
+            >
               {messages.errors["document.review.file_required"]}
             </p>
           )}
@@ -179,7 +226,10 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
               type="button"
               onClick={() => {
                 setError(null);
-                setConfirming({ status: "APPROVED", version: submission.version });
+                setConfirming({
+                  status: "APPROVED",
+                  version: submission.version,
+                });
               }}
               disabled={busy || !hasFile}
               aria-describedby={hasFile ? undefined : blockedId}
@@ -196,15 +246,28 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
   );
 }
 
-function FactList({ facts, compact = false }: { facts: Fact[]; compact?: boolean }) {
+function FactList({
+  facts,
+  compact = false,
+}: {
+  facts: Fact[];
+  compact?: boolean;
+}) {
   return (
-    <dl className={`grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 ${compact ? "mt-3 gap-y-2" : "mt-4 gap-y-3"}`}>
+    <dl
+      className={`grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 ${compact ? "mt-3 gap-y-2" : "mt-4 gap-y-3"}`}
+    >
       {facts.map((fact) => (
         <div key={fact.label} className="contents">
           <dt className="text-[13px] text-muted-foreground">{fact.label}</dt>
           <dd className="text-sm font-medium text-foreground">
             {fact.value}
-            {fact.hint && <span className="font-normal text-muted-foreground"> · {fact.hint}</span>}
+            {fact.hint && (
+              <span className="font-normal text-muted-foreground">
+                {" "}
+                · {fact.hint}
+              </span>
+            )}
           </dd>
         </div>
       ))}
@@ -225,7 +288,9 @@ function DecisionBlock({
     <div className="mt-6">
       <h3 className="text-sm font-semibold text-foreground">{title}</h3>
       <p className="mt-1 text-sm text-foreground">{line.title}</p>
-      {line.reason && <p className="text-sm text-muted-foreground">{line.reason}</p>}
+      {line.reason && (
+        <p className="text-sm text-muted-foreground">{line.reason}</p>
+      )}
       {note && <p className="mt-1 text-xs text-muted-foreground">{note}</p>}
     </div>
   );

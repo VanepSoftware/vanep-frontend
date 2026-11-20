@@ -41,6 +41,14 @@ describe("readApiProblem", () => {
     expect(result.blockers).toEqual(blockers);
   });
 
+  it("translates the lock race outside document decisions", async () => {
+    const result = await readApiProblem(problem(409, { code: "request.conflict", detail: "Conflito." }));
+    expect(result.code).toBe("request.conflict");
+    expect(problemMessage(result)).toBe(
+      "O cadastro mudou enquanto você decidia. Confira a versão atual e tente de novo.",
+    );
+  });
+
   it("ignores codes the screen does not know", async () => {
     const result = await readApiProblem(problem(400, { code: "location.cep.invalid", detail: "CEP" }));
     expect(result.code).toBeNull();

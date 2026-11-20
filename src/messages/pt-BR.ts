@@ -785,6 +785,7 @@ const ptBR = {
           "O cadastro ainda não pode ser aprovado. Veja o que falta.",
         "driver.onboarding.not_under_review": "Este cadastro já foi decidido.",
         "driver.rejection.reason.required": "Escreva o motivo da recusa.",
+        "request.conflict": "O cadastro mudou enquanto você decidia. Confira a versão atual e tente de novo.",
         forbidden: "Você não tem permissão para fazer isso.",
         generic: "Algo deu errado. Tente de novo.",
       },
