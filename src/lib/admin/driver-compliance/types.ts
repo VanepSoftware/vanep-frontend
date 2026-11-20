@@ -125,7 +125,7 @@ export type DocumentSubmission = SubmissionBase & {
   kind: "DRIVER_DOCUMENT" | "VEHICLE_DOCUMENT";
 };
 
-/** Na CNH, `expiresAt` é a `validUntil` e o arquivo é a foto. */
+/** Na CNH, `expiresAt` é a `validUntil`. O arquivo pode ser imagem ou PDF, como nos documentos. */
 export type CnhSubmission = SubmissionBase & {
   kind: "DRIVER_CNH";
   category: string;
@@ -135,14 +135,18 @@ export type CnhSubmission = SubmissionBase & {
 
 export type Submission = DocumentSubmission | CnhSubmission;
 
-/** Decisão do envio substituído mais recente do requisito, sem arquivo. */
+/**
+ * A decisão mais recente além do envio que conta: a de um envio substituído
+ * (sem arquivo) ou uma recusa ainda não substituída ao lado do aprovado que vale
+ * (`supersededAt` nulo).
+ */
 export type LastDecision = {
   status: DocumentStatus;
   rejectionReasonCode: DocumentRejectionReason | null;
   rejectionReason: string | null;
   reviewedBy: UserRef | null;
   reviewedAt: IsoDateTime | null;
-  supersededAt: IsoDateTime;
+  supersededAt: IsoDateTime | null;
 };
 
 export type RequirementStatus<R extends CredentialRequirement = CredentialRequirement> = {

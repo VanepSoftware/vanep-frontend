@@ -8,8 +8,8 @@ import type {
   CredentialRequirement,
   DriverComplianceDetail,
   HistoryEvent,
-  LastDecision,
   RequirementStatus,
+  Submission,
   UserRef,
 } from "./types";
 
@@ -113,15 +113,24 @@ function allRequirements(detail: DriverComplianceDetail): RequirementStatus[] {
 }
 
 /**
+ * O envio está esperando o admin: é o que a API põe na `reviewQueue` (pendente
+ * e com arquivo). Um pendente sem arquivo espera o motorista, não o admin; a
+ * regra é do back, e a tela só lê a fila dele.
+ */
+export function isAwaitingReview(detail: DriverComplianceDetail, submission: Submission | null): boolean {
+  return submission != null && detail.reviewQueue.some((entry) => entry.token === submission.token);
+}
+
+/**
  * `5 aprovados · 2 pendentes · 1 reprovado`, só dos obrigatórios. Uma renovação
- * em análise ao lado de uma aprovação conta como pendente também.
+ * na fila de revisão, ao lado de uma aprovação, conta como pendente também.
  */
 export function requirementsSummary(detail: DriverComplianceDetail): string {
   const required = allRequirements(detail).filter((item) => !item.optional);
   const counts = new Map<ComplianceState, number>();
   for (const item of required) {
     counts.set(item.state, (counts.get(item.state) ?? 0) + 1);
-    if (item.pending && item.state !== "PENDING") {
+    if (item.state !== "PENDING" && isAwaitingReview(detail, item.pending)) {
       counts.set("PENDING", (counts.get("PENDING") ?? 0) + 1);
     }
   }
@@ -142,6 +151,7 @@ export function requirementDetail(item: RequirementStatus): string {
   if (item.state === "MISSING") return item.optional ? page.optionalHint : page.notSent;
   const current = item.current;
   if (item.state === "REJECTED" && !item.pending) return page.awaitingResend;
+  if (item.state === "PENDING" && current && current.fileUrl == null) return page.awaitingFile;
   if (current?.kind === "DRIVER_CNH") {
     return interpolate(page.cnhDetail, {
       category: current.category,
@@ -152,6 +162,15 @@ export function requirementDetail(item: RequirementStatus): string {
   return messages.noValue;
 }
 
+/**
+ * A renovação ao lado de uma aprovação que ainda vale: em análise, se está na
+ * fila do admin, ou esperando o motorista mandar o arquivo.
+ */
+export function renewalNote(detail: DriverComplianceDetail, item: RequirementStatus): string | null {
+  if (!item.pending || item.state === "PENDING") return null;
+  return isAwaitingReview(detail, item.pending) ? page.renewalPending : page.renewalAwaitingFile;
+}
+
 /** A validade do envio que conta. */
 export function requirementExpiry(item: RequirementStatus, today: string): string | null {
   const current = item.current;
@@ -160,38 +179,6 @@ export function requirementExpiry(item: RequirementStatus, today: string): strin
   if (current.expiresAt < today) return interpolate(page.expiredOn, { date });
   if (current.kind === "DRIVER_CNH") return interpolate(page.validUntil, { date });
   return interpolate(page.expiresOn, { date });
-}
-
-/** O que um envio e uma última decisão têm em comum. */
-type Decision = Pick<LastDecision, "status" | "rejectionReasonCode" | "reviewedBy" | "reviewedAt">;
-
-function decisionText(template: string, decision: Decision): string | null {
-  if (!decision.reviewedAt) return null;
-  const text = interpolate(template, {
-    status: messages.documentStatus[decision.status].toLowerCase(),
-    actor: actorName(decision.reviewedBy),
-    at: formatShortDateTime(decision.reviewedAt),
-  });
-  if (!decision.rejectionReasonCode) return text;
-  return interpolate(page.lastDecisionReason, {
-    decision: text,
-    reason: messages.documentRejectionReason[decision.rejectionReasonCode],
-  });
-}
-
-/**
- * A decisão que explica a linha:
- * - reprovado: quem reprovou o envio que conta, quando e por quê;
- * - pendente depois de um reenvio: a decisão do envio substituído.
- */
-export function decisionNote(item: RequirementStatus): string | null {
-  if (item.state === "REJECTED" && item.current) {
-    return decisionText(page.rejectedBy, item.current);
-  }
-  if (item.state === "PENDING" && item.lastDecision) {
-    return decisionText(page.lastDecision, item.lastDecision);
-  }
-  return null;
 }
 
 // ---------------------------------------------------------------- histórico

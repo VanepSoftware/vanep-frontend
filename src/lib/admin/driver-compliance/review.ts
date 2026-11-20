@@ -1,10 +1,12 @@
 import { interpolate, t } from "@/lib/l10n";
 
-import { formatCpf, formatPlate, maskCpf, vehicleDescription } from "./driver-page";
+import { formatCpf, formatPlate, isAwaitingReview, maskCpf, vehicleDescription } from "./driver-page";
 import { expiryDistance, formatDate, formatDateTime, formatShortDateTime } from "./format";
 import type {
   ComplianceVehicle,
+  DocumentRejectionReason,
   DriverComplianceDetail,
+  DriverComplianceRow,
   RequirementStatus,
   ReviewQueueItem,
   Submission,
@@ -81,9 +83,13 @@ export function findSubmission(
   return null;
 }
 
-/** O envio que a linha do checklist abre: a renovação pendente, se há, ou o que conta. */
-export function rowSubmission(item: RequirementStatus): Submission | null {
-  return item.pending ?? item.current;
+/**
+ * O envio que a linha do checklist abre: a renovação, se ela está na fila de
+ * revisão; senão, o que conta (uma renovação sem arquivo não tem o que ver).
+ */
+export function rowSubmission(detail: DriverComplianceDetail, item: RequirementStatus): Submission | null {
+  if (isAwaitingReview(detail, item.pending)) return item.pending;
+  return item.current ?? item.pending;
 }
 
 export type QueuePosition = {
@@ -223,4 +229,59 @@ export function decisionLine(decision: {
       ? decision.rejectionReason ?? label
       : [label, decision.rejectionReason].filter(Boolean).join(" · ");
   return { title, reason };
+}
+
+// ---------------------------------------------------------------- reprovar
+
+export const DOCUMENT_REJECTION_REASONS: readonly DocumentRejectionReason[] = [
+  "ILLEGIBLE",
+  "EXPIRED",
+  "DATA_MISMATCH",
+  "WRONG_TYPE",
+  "INCOMPLETE",
+  "OTHER",
+];
+
+/** O assunto da prévia: o nome do documento e, se é da van, a placa. */
+/** O documento numa frase: `o CRLV da van ABC-1D23`, `a CNH de Ana Souza`. */
+export function submissionInSentence(detail: DriverComplianceDetail, found: FoundSubmission): string {
+  const document = messages.requirementInSentence[found.item.requirement];
+  if (found.vehicle) {
+    return interpolate(messages.driver.documentOfVehicle, { document, plate: formatPlate(found.vehicle.plate) });
+  }
+  return interpolate(review.documentOfDriver, { document, name: detail.driver.name ?? messages.noName });
+}
+
+/**
+ * O que acontece com o cadastro depois da recusa: em análise, continua; numa
+ * renovação, o aprovado antes segue valendo.
+ */
+export function rejectionConsequence(detail: DriverComplianceDetail, found: FoundSubmission): string | null {
+  const isRenewal = found.item.pending?.token === found.submission.token;
+  if (isRenewal && found.item.satisfied) {
+    return review.rejectForm.keepsApproved;
+  }
+  if (detail.driver.approvalStatus === "UNDER_REVIEW") return review.rejectForm.underReview;
+  return null;
+}
+
+// ---------------------------------------------------------------- fim
+
+export type DoneScenario = "ready" | "blocked" | "clear";
+
+/**
+ * A tela de fim, quando não sobra pendente: aprovar o cadastro se a API deixa,
+ * esperar o motorista se ainda falta algo, ou nada a fazer.
+ */
+export function doneScenario(detail: DriverComplianceDetail): DoneScenario {
+  if (detail.driver.approvalStatus !== "UNDER_REVIEW") return "clear";
+  return detail.decision.canApprove ? "ready" : "blocked";
+}
+
+/** O próximo motorista com documento esperando revisão, que não seja este. */
+export function nextDriverInQueue(
+  rows: DriverComplianceRow[],
+  currentToken: string,
+): DriverComplianceRow | null {
+  return rows.find((row) => row.token !== currentToken && row.pendingReviewCount > 0) ?? null;
 }

@@ -6,9 +6,10 @@ import {
   formatPhone,
   formatPlate,
   historyLine,
-  decisionNote,
+  isAwaitingReview,
   maskCpf,
   maskPhone,
+  renewalNote,
   requirementDetail,
   requirementExpiry,
   requirementsSummary,
@@ -99,21 +100,33 @@ describe("driverRejectionText", () => {
 });
 
 describe("requirementsSummary", () => {
-  it("counts the required items by state, with renewals as pending", () => {
+  it("counts the required items by state, with renewals under review as pending", () => {
     const base = detail();
+    const renewal = requirement("SCHOOL_DRIVER_COURSE", {
+      state: "APPROVED",
+      pending: documentSubmission({ token: "c2" }),
+    });
     const withRenewal = detail({
-      driverRequirements: [
-        ...base.driverRequirements,
-        requirement("SCHOOL_DRIVER_COURSE", {
-          state: "APPROVED",
-          pending: documentSubmission({ token: "c2" }),
-        }),
+      driverRequirements: [...base.driverRequirements, renewal],
+      reviewQueue: [
+        ...base.reviewQueue,
+        { kind: "DRIVER_DOCUMENT", token: "c2", requirement: "SCHOOL_DRIVER_COURSE", vehicleToken: null },
       ],
     });
     // Motorista: CNH e curso aprovados, certidão pendente (o alvará é opcional).
     // Van: CRLV aprovado, vistoria pendente, autorização faltando.
     expect(requirementsSummary(base)).toBe("3 aprovados · 2 pendentes · 1 faltando");
     expect(requirementsSummary(withRenewal)).toBe("4 aprovados · 3 pendentes · 1 faltando");
+  });
+
+  it("leaves out a renewal still waiting for its file", () => {
+    const base = detail();
+    const renewal = requirement("SCHOOL_DRIVER_COURSE", {
+      state: "APPROVED",
+      pending: documentSubmission({ token: "c2", fileUrl: null, file: null }),
+    });
+    const withRenewal = detail({ driverRequirements: [...base.driverRequirements, renewal] });
+    expect(requirementsSummary(withRenewal)).toBe("4 aprovados · 2 pendentes · 1 faltando");
   });
 
   it("is empty without requirements", () => {
@@ -145,6 +158,38 @@ describe("requirement row", () => {
     ).toBe("—");
   });
 
+  it("says when a pending item still waits for its file", () => {
+    expect(
+      requirementDetail(
+        requirement("CRIMINAL_RECORD", {
+          state: "PENDING",
+          current: documentSubmission({ fileUrl: null, file: null }),
+        }),
+      ),
+    ).toBe("Aguardando o arquivo do motorista");
+  });
+
+  it("tells a renewal under review from one waiting for its file", () => {
+    const current = documentSubmission({ token: "c1", status: "APPROVED" });
+    const page = detail({
+      reviewQueue: [{ kind: "DRIVER_DOCUMENT", token: "c2", requirement: "SCHOOL_DRIVER_COURSE", vehicleToken: null }],
+    });
+    const underReview = requirement("SCHOOL_DRIVER_COURSE", {
+      state: "APPROVED",
+      current,
+      pending: documentSubmission({ token: "c2" }),
+    });
+    const waitingFile = requirement("SCHOOL_DRIVER_COURSE", {
+      state: "APPROVED",
+      current,
+      pending: documentSubmission({ token: "c3", fileUrl: null, file: null }),
+    });
+    expect(renewalNote(page, underReview)).toBe("Renovação em análise");
+    expect(renewalNote(page, waitingFile)).toBe("Renovação aguardando o arquivo do motorista");
+    expect(renewalNote(page, requirement("SCHOOL_DRIVER_COURSE", { state: "APPROVED", current }))).toBeNull();
+    expect(isAwaitingReview(page, null)).toBe(false);
+  });
+
   it("explains a missing or rejected item", () => {
     expect(requirementDetail(requirement("CRIMINAL_RECORD"))).toBe("Não enviado");
     expect(requirementDetail(requirement("MUNICIPAL_AUTHORIZATION"))).toBe(
@@ -173,51 +218,6 @@ describe("requirement row", () => {
       requirementExpiry(
         requirement("CRIMINAL_RECORD", { state: "REJECTED", current: documentSubmission({ status: "REJECTED" }) }),
         TODAY,
-      ),
-    ).toBeNull();
-  });
-
-  it("shows the last decision after a resend", () => {
-    const resent = requirement("CRIMINAL_RECORD", {
-      state: "PENDING",
-      current: documentSubmission(),
-      lastDecision: {
-        status: "REJECTED",
-        rejectionReasonCode: "ILLEGIBLE",
-        rejectionReason: null,
-        reviewedBy: { token: "u", name: "Ana Souza" },
-        reviewedAt: "2026-11-09T18:30:00Z",
-        supersededAt: "2026-11-11T12:12:00Z",
-      },
-    });
-    expect(decisionNote(resent)).toBe("Última decisão: reprovado por Ana Souza em 09/11 · 15:30 · Ilegível");
-    expect(
-      decisionNote({
-        ...resent,
-        lastDecision: { ...resent.lastDecision!, status: "APPROVED", rejectionReasonCode: null },
-      }),
-    ).toBe("Última decisão: aprovado por Ana Souza em 09/11 · 15:30");
-  });
-
-  it("says who rejected what counts, and why", () => {
-    const rejected = requirement("CRIMINAL_RECORD", {
-      state: "REJECTED",
-      current: documentSubmission({
-        status: "REJECTED",
-        rejectionReasonCode: "EXPIRED",
-        reviewedBy: { token: "u", name: "Ana Souza" },
-        reviewedAt: "2026-11-09T18:30:00Z",
-      }),
-    });
-    expect(decisionNote(rejected)).toBe("Reprovado por Ana Souza em 09/11 · 15:30 · Vencido");
-  });
-
-  it("has no note otherwise", () => {
-    expect(decisionNote(requirement("CRIMINAL_RECORD"))).toBeNull();
-    expect(decisionNote(requirement("CRIMINAL_RECORD", { state: "PENDING", current: documentSubmission() }))).toBeNull();
-    expect(
-      decisionNote(
-        requirement("CRIMINAL_RECORD", { state: "REJECTED", current: documentSubmission({ status: "REJECTED" }) }),
       ),
     ).toBeNull();
   });

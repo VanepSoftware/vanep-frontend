@@ -21,8 +21,7 @@ export function submissionStatusUrl(kind: SubmissionKind, token: string): string
  * O navegador abre o arquivo pelo proxy do admin, na mesma rota sob `/api/admin`,
  * mantendo o `v` para o cache imutável. Qualquer outro caminho dá `null`.
  */
-const FILE_URL =
-  /^\/api\/((?:driver-documents|vehicle-documents)\/[\w-]+\/file|driver-cnhs\/[\w-]+\/photo)(\?v=[\w-]+)?$/;
+const FILE_URL = /^\/api\/((?:driver-documents|vehicle-documents|driver-cnhs)\/[\w-]+\/file)(\?v=[\w-]+)?$/;
 
 export function adminFileUrl(fileUrl: string | null): string | null {
   if (!fileUrl) return null;

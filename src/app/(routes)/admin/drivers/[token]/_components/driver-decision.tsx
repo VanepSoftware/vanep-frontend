@@ -6,7 +6,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
 import {
   DRIVER_REJECTION_REASONS,
-  blockerText,
+  blockersSummary,
   canDecideRegistration,
   rejectionMessageError,
 } from "@/lib/admin/driver-compliance/decision";
@@ -45,7 +45,11 @@ function driverUrl(token: string, action: "approve" | "reject"): string {
 function isRefusal(error: unknown): error is ApiProblemError {
   if (!(error instanceof ApiProblemError)) return false;
   const code = error.problem.code;
-  return code === "driver.onboarding.documents_not_approved" || code === "driver.onboarding.not_under_review";
+  return (
+    code === "driver.onboarding.documents_not_approved" ||
+    code === "driver.onboarding.not_under_review" ||
+    code === "request.conflict"
+  );
 }
 
 function errorText(error: unknown): string {
@@ -121,13 +125,12 @@ export function BlockerList({
 }) {
   return (
     <div id={id} className={`text-[13px] ${align === "end" ? "text-right text-muted-foreground" : "mt-1"}`}>
-      <span>{decision.blockedIntro} </span>
-      {blockers.map(blockerText).join(" · ")}
+      {blockersSummary(blockers)}
     </div>
   );
 }
 
-function ApproveDialog({
+export function ApproveDialog({
   open,
   name,
   token,

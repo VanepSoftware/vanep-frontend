@@ -545,10 +545,9 @@ const ptBR = {
         cnhDetail: "Categoria {category} · nº {number}",
         documentNumber: "nº {number}",
         awaitingResend: "Aguardando reenvio do motorista",
+        awaitingFile: "Aguardando o arquivo do motorista",
         renewalPending: "Renovação em análise",
-        lastDecision: "Última decisão: {status} por {actor} em {at}",
-        rejectedBy: "Reprovado por {actor} em {at}",
-        lastDecisionReason: "{decision} · {reason}",
+        renewalAwaitingFile: "Renovação aguardando o arquivo do motorista",
         expiresOn: "Vence em {date}",
         expiredOn: "Venceu em {date}",
         validUntil: "Válida até {date}",
@@ -568,7 +567,23 @@ const ptBR = {
       decision: {
         approve: "Aprovar cadastro",
         reject: "Reprovar cadastro",
-        blockedIntro: "Para aprovar, falta:",
+        blockedSummary: { one: "Para aprovar, falta {items}.", other: "Para aprovar, faltam {items}." },
+        documents: { one: "1 documento", other: "{count} documentos" },
+        documentsByState: "{documents} ({states})",
+        documentsInState: {
+          PENDING: { one: "1 documento pendente", other: "{count} documentos pendentes" },
+          EXPIRED: { one: "1 documento vencido", other: "{count} documentos vencidos" },
+          REJECTED: { one: "1 documento reprovado", other: "{count} documentos reprovados" },
+          MISSING: { one: "1 documento não enviado", other: "{count} documentos não enviados" },
+          APPROVED: { one: "1 documento aprovado", other: "{count} documentos aprovados" },
+        },
+        stateCount: {
+          PENDING: { one: "1 pendente", other: "{count} pendentes" },
+          EXPIRED: { one: "1 vencido", other: "{count} vencidos" },
+          REJECTED: { one: "1 reprovado", other: "{count} reprovados" },
+          MISSING: { one: "1 não enviado", other: "{count} não enviados" },
+          APPROVED: { one: "1 aprovado", other: "{count} aprovados" },
+        },
         blocker: {
           NO_ACTIVE_VEHICLE: "uma van ativa cadastrada",
           CNH_CATEGORY: "CNH com categoria D ou E",
@@ -591,7 +606,6 @@ const ptBR = {
         rejectDescription:
           "O motorista é avisado por e-mail com o motivo. Para reprovar um documento, reprove só o documento: o cadastro continua em análise.",
         reasonLegend: "Motivo",
-        reasonOther: "Outro motivo",
         messageLabel: "Mensagem para o motorista",
         messageOptional: "(opcional)",
         messageRequired: "(obrigatória)",
@@ -653,7 +667,55 @@ const ptBR = {
         approve: "Aprovar",
         reject: "Reprovar",
         approving: "Aprovando...",
+        documentOfDriver: "{document} de {name}",
+        confirmApprove: {
+          title: "Aprovar {document}?",
+          description: "O documento passa a contar no cadastro. Depois, a revisão segue para o próximo pendente.",
+          confirm: "Aprovar",
+        },
+        confirmReject: {
+          title: "Reprovar {document}?",
+          description: "O motorista recebe o motivo por e-mail e pode enviar o documento de novo.",
+          confirm: "Reprovar",
+        },
         sizes: { bytes: "{value} B", kb: "{value} KB", mb: "{value} MB" },
+        rejectForm: {
+          title: "Reprovar documento",
+          description: "O motorista recebe o motivo por e-mail e pode enviar o documento de novo.",
+          underReview: "O cadastro continua em análise.",
+          keepsApproved: "O documento aprovado antes continua valendo até um novo ser aprovado.",
+          cancel: "Cancelar",
+          confirm: "Reprovar",
+          rejecting: "Reprovando...",
+        },
+        done: {
+          readyTitle: "Tudo revisado. Aprovar o cadastro?",
+          readyDescription:
+            "{name} cumpre todos os requisitos. Ao aprovar, passa a aparecer na busca e pode receber propostas.",
+          blockedTitle: "Você revisou tudo que estava pendente",
+          blockedDescription: "O cadastro de {name} ainda não pode ser aprovado. Agora a próxima ação é do motorista.",
+          clearTitle: "Nada mais para revisar",
+          clearDescription: "Não há documento de {name} esperando revisão.",
+          approvedTitle: "Cadastro aprovado",
+          approvedDescription: "{name} foi avisado por e-mail e já aparece na busca.",
+          driverRequirements: "Documentos do motorista",
+          vehicle: "Van {plate}",
+          approved: "Aprovados",
+          qualified: "Credenciais completas",
+          notNow: "Agora não",
+          viewDriver: "Ver motorista",
+          nextDriver: "Próximo da fila: {name}",
+          backToQueue: "Voltar para a fila",
+        },
+      },
+      /** As opções do formulário de reprovação, mais descritivas que o rótulo curto. */
+      documentRejectionOption: {
+        ILLEGIBLE: "Documento ilegível ou cortado",
+        EXPIRED: "Documento vencido",
+        DATA_MISMATCH: "Dados não conferem com o cadastro",
+        WRONG_TYPE: "Tipo de documento errado",
+        INCOMPLETE: "Faltam páginas, frente ou verso",
+        OTHER: "Outro motivo",
       },
       /** O nome do requisito no meio de uma frase, com o artigo. */
       requirementInSentence: {
@@ -706,18 +768,6 @@ const ptBR = {
         INCOMPLETE: "Incompleto",
         OTHER: "Outro motivo",
       },
-      /**
-       * O que o motorista lê no e-mail da recusa (`document.rejection_reason.*` da API).
-       * Mudou lá, muda aqui. Em `OTHER` o e-mail mostra só a mensagem do admin.
-       */
-      documentRejectionDriverText: {
-        ILLEGIBLE:
-          "Não conseguimos ler o documento. Envie uma foto ou PDF nítido, com todas as informações visíveis.",
-        EXPIRED: "O documento está vencido. Envie a versão válida.",
-        DATA_MISMATCH: "Os dados do documento não conferem com o seu cadastro.",
-        WRONG_TYPE: "O arquivo enviado não é o documento pedido.",
-        INCOMPLETE: "O documento está incompleto. Envie todas as páginas ou os dois lados.",
-      },
       driverRejectionReason: {
         DATA_MISMATCH: "Cadastro não confere com os documentos",
         NOT_ELIGIBLE: "Não atende aos requisitos do CTB",
@@ -735,6 +785,7 @@ const ptBR = {
           "O cadastro ainda não pode ser aprovado. Veja o que falta.",
         "driver.onboarding.not_under_review": "Este cadastro já foi decidido.",
         "driver.rejection.reason.required": "Escreva o motivo da recusa.",
+        "request.conflict": "O cadastro mudou enquanto você decidia. Confira a versão atual e tente de novo.",
         forbidden: "Você não tem permissão para fazer isso.",
         generic: "Algo deu errado. Tente de novo.",
       },

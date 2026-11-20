@@ -60,8 +60,12 @@ export default function DriverCompliancePage() {
       <DriverBreadcrumb name={detail.driver.name ?? messages.noName} />
       {state.status === "error" && <LoadError message={errorMessage(state.error)} onRetry={reload} />}
       {outcome && <OutcomeNotice outcome={outcome} onDismiss={() => setDecided(null)} />}
-      <DriverHeader detail={detail} actions={<DriverDecision detail={detail} onOutcome={onOutcome} />} />
-      <DriverData driver={detail.driver} />
+      <DriverHeader
+        detail={detail}
+        actions={<DriverDecision key={detail.driver.token} detail={detail} onOutcome={onOutcome} />}
+      />
+      {/* CPF e telefone mostrados são deste motorista; ao trocar de motorista voltam mascarados. */}
+      <DriverData key={detail.driver.token} driver={detail.driver} />
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <RequirementsList
           detail={detail}

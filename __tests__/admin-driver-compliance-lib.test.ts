@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { readApiProblem } from "@/lib/admin/api-problem";
-import { driverRejectionPreview, problemMessage } from "@/lib/admin/driver-compliance/messages";
+import { problemMessage } from "@/lib/admin/driver-compliance/messages";
 import { adminFileUrl, submissionStatusUrl } from "@/lib/admin/driver-compliance/urls";
 
 function problem(status: number, body?: unknown): Response {
@@ -39,6 +39,14 @@ describe("readApiProblem", () => {
     );
     expect(result.code).toBe("driver.onboarding.documents_not_approved");
     expect(result.blockers).toEqual(blockers);
+  });
+
+  it("translates the lock race outside document decisions", async () => {
+    const result = await readApiProblem(problem(409, { code: "request.conflict", detail: "Conflito." }));
+    expect(result.code).toBe("request.conflict");
+    expect(problemMessage(result)).toBe(
+      "O cadastro mudou enquanto você decidia. Confira a versão atual e tente de novo.",
+    );
   });
 
   it("ignores codes the screen does not know", async () => {
@@ -81,28 +89,6 @@ describe("problemMessage", () => {
   });
 });
 
-describe("driverRejectionPreview", () => {
-  it("shows the reason's text and the admin's note below it", () => {
-    expect(driverRejectionPreview("EXPIRED", "  Venceu em outubro  ")).toEqual([
-      "O documento está vencido. Envie a versão válida.",
-      "Venceu em outubro",
-    ]);
-  });
-
-  it("shows only the reason's text without a note", () => {
-    expect(driverRejectionPreview("WRONG_TYPE", "   ")).toEqual([
-      "O arquivo enviado não é o documento pedido.",
-    ]);
-  });
-
-  it("shows only the admin's message for another reason", () => {
-    expect(driverRejectionPreview("OTHER", "Foto de outra pessoa")).toEqual([
-      "Foto de outra pessoa",
-    ]);
-    expect(driverRejectionPreview("OTHER", null)).toEqual([]);
-  });
-});
-
 describe("urls", () => {
   it("maps each kind of submission to its decision route", () => {
     expect(submissionStatusUrl("DRIVER_DOCUMENT", "a b")).toBe(
@@ -115,8 +101,8 @@ describe("urls", () => {
   it.each([
     ["/api/driver-documents/t1/file?v=m1", "/api/admin/driver-documents/t1/file?v=m1"],
     ["/api/vehicle-documents/t1/file?v=m1", "/api/admin/vehicle-documents/t1/file?v=m1"],
-    ["/api/driver-cnhs/t1/photo?v=m1", "/api/admin/driver-cnhs/t1/photo?v=m1"],
-    ["/api/driver-cnhs/t1/photo", "/api/admin/driver-cnhs/t1/photo"],
+    ["/api/driver-cnhs/t1/file?v=m1", "/api/admin/driver-cnhs/t1/file?v=m1"],
+    ["/api/driver-cnhs/t1/file", "/api/admin/driver-cnhs/t1/file"],
   ])("opens %s through the admin proxy", (fileUrl, expected) => {
     expect(adminFileUrl(fileUrl)).toBe(expected);
   });
@@ -128,7 +114,9 @@ describe("urls", () => {
     "/api/drivers/t1/photo",
     "/api/driver-documents/t1/file/../../roles",
     "/api/driver-documents/../file",
-    "/api/driver-cnhs/t1/photo?v=../x",
+    "/api/driver-cnhs/t1/file?v=../x",
+    // A rota antiga da CNH: o back responde 404.
+    "/api/driver-cnhs/t1/photo",
     "/api/driver-documents/t1/file?v=m1&x=2",
   ])("refuses %s", (fileUrl) => {
     expect(adminFileUrl(fileUrl)).toBeNull();

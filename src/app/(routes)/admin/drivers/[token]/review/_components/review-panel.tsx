@@ -3,6 +3,8 @@
 import { useId, useState } from "react";
 
 import { Chip } from "@/components/ui/chip";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ApproveIcon, RejectIcon } from "@/components/ui/decision-icons";
 import { problemMessage } from "@/lib/admin/driver-compliance/messages";
 import {
   type Fact,
@@ -10,12 +12,15 @@ import {
   decisionLine,
   registrationChecks,
   submissionFacts,
+  submissionInSentence,
 } from "@/lib/admin/driver-compliance/review";
 import { documentStatusTone } from "@/lib/admin/driver-compliance/tone";
 import type { DriverComplianceDetail, SubmissionStatusRequest } from "@/lib/admin/driver-compliance/types";
 import { submissionStatusUrl } from "@/lib/admin/driver-compliance/urls";
 import { ApiProblemError, fetchJson } from "@/lib/admin/fetch-json";
-import { t } from "@/lib/l10n";
+import { interpolate, t } from "@/lib/l10n";
+
+import { RejectForm } from "./reject-form";
 
 const messages = t("admin").driverReview;
 const review = messages.review;
@@ -37,9 +42,12 @@ function isStale(error: unknown): error is ApiProblemError {
 
 export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
   const { submission, item } = found;
+  const [mode, setMode] = useState<"facts" | "reject">("facts");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [revealDocument, setRevealDocument] = useState(false);
+  /** A decisão esperando o "tem certeza?": aprovar, ou reprovar com o motivo já escolhido. */
+  const [confirming, setConfirming] = useState<SubmissionStatusRequest | null>(null);
   const pending = submission.status === "PENDING";
   // A API recusa aprovar sem arquivo (422); a tela já sabe e nem oferece.
   const hasFile = submission.fileUrl != null;
@@ -47,10 +55,10 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
   const decided = decisionLine(submission);
   const last = pending && item.lastDecision ? decisionLine(item.lastDecision) : null;
 
-  async function approve() {
+  /** Aprovar e reprovar: o mesmo `PUT`, com a `version` que o admin viu. */
+  async function decide(body: SubmissionStatusRequest) {
     setBusy(true);
     setError(null);
-    const body: SubmissionStatusRequest = { status: "APPROVED", version: submission.version };
     try {
       await fetchJson(submissionStatusUrl(submission.kind, submission.token), {
         method: "PUT",
@@ -65,7 +73,47 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
       }
     } finally {
       setBusy(false);
+      setConfirming(null);
     }
+  }
+
+  const document = submissionInSentence(detail, found);
+  const rejecting = confirming?.status === "REJECTED";
+  const confirmText = rejecting ? review.confirmReject : review.confirmApprove;
+  const confirmDialog = (
+    <ConfirmDialog
+      open={confirming != null}
+      busy={busy}
+      tone={rejecting ? "danger" : "success"}
+      icon={rejecting ? <RejectIcon /> : <ApproveIcon />}
+      title={interpolate(confirmText.title, { document })}
+      description={confirmText.description}
+      confirmLabel={confirmText.confirm}
+      onConfirm={() => confirming && void decide(confirming)}
+      onCancel={() => setConfirming(null)}
+    />
+  );
+
+  if (pending && mode === "reject") {
+    return (
+      <aside aria-label={review.rejectForm.title} className="flex flex-col rounded-2xl border border-border bg-background">
+        <RejectForm
+          detail={detail}
+          found={found}
+          busy={busy}
+          error={error}
+          onSubmit={(body) => {
+            setError(null);
+            setConfirming(body);
+          }}
+          onCancel={() => {
+            setError(null);
+            setMode("facts");
+          }}
+        />
+        {confirmDialog}
+      </aside>
+    );
   }
 
   return (
@@ -99,7 +147,13 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
         </div>
 
         {decided && <DecisionBlock title={review.decidedTitle} line={decided} />}
-        {last && <DecisionBlock title={review.lastDecisionTitle} line={last} note={review.lastDecisionNote} />}
+        {last && (
+          <DecisionBlock
+            title={review.lastDecisionTitle}
+            line={last}
+            note={item.lastDecision?.supersededAt ? review.lastDecisionNote : undefined}
+          />
+        )}
       </div>
 
       {pending && (
@@ -117,16 +171,33 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
           <div className="flex justify-end gap-2">
             <button
               type="button"
-              onClick={() => void approve()}
+              onClick={() => {
+                setError(null);
+                setMode("reject");
+              }}
+              disabled={busy}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-danger-border px-5 text-sm font-semibold text-danger hover:border-danger hover:bg-danger-soft disabled:opacity-50"
+            >
+              <RejectIcon />
+              {review.reject}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setConfirming({ status: "APPROVED", version: submission.version });
+              }}
               disabled={busy || !hasFile}
               aria-describedby={hasFile ? undefined : blockedId}
-              className="h-10 rounded-lg bg-success px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:brightness-110 disabled:opacity-50"
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-success px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:brightness-110 disabled:opacity-50"
             >
+              {!busy && <ApproveIcon />}
               {busy ? review.approving : review.approve}
             </button>
           </div>
         </footer>
       )}
+      {confirmDialog}
     </aside>
   );
 }
