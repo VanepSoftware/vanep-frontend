@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 import { useDriverReviewCounts } from "@/components/admin/driver-review-counts";
+import { LoadError } from "@/components/admin/load-error";
 import { Chip } from "@/components/ui/chip";
 import { todayInSaoPaulo } from "@/lib/admin/driver-compliance/format";
 import { problemMessage } from "@/lib/admin/driver-compliance/messages";
@@ -137,16 +138,7 @@ function DriverQueue() {
       </nav>
 
       {state.status === "error" ? (
-        <div className="flex items-center justify-between rounded-xl border border-danger-border bg-danger-soft px-4 py-3 text-sm text-danger">
-          <span>{errorMessage(state.error)}</span>
-          <button
-            type="button"
-            onClick={reload}
-            className="font-semibold underline-offset-2 hover:underline"
-          >
-            {messages.retry}
-          </button>
-        </div>
+        <LoadError message={errorMessage(state.error)} onRetry={reload} />
       ) : (
         <div>
           <QueueTable
