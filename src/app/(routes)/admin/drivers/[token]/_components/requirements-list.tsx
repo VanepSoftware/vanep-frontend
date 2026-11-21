@@ -18,8 +18,15 @@ import { interpolate, t } from "@/lib/l10n";
 const messages = t("admin").driverReview;
 const page = messages.driver;
 
+/**
+ * As colunas seguem a largura da tabela (container query), não a da tela: no
+ * `lg` ela divide a linha com o histórico. A validade só aparece quando cabe.
+ */
 const ROW_GRID =
-  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 px-6 py-3.5 sm:grid-cols-[minmax(0,1fr)_120px_150px_88px]";
+  "grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 px-4 py-3.5 @md:px-6 @2xl:grid-cols-[minmax(0,1fr)_120px_150px_88px] @2xl:gap-x-4";
+
+/** O mesmo recuo lateral das linhas, nos cabeçalhos. */
+const GUTTER = "px-4 @md:px-6";
 
 export type RequirementActionProps = {
   item: RequirementStatus;
@@ -39,8 +46,11 @@ export function RequirementsList({ detail, headerAction, RowAction }: Requiremen
   const summary = requirementsSummary(detail);
 
   return (
-    <section aria-labelledby="requirements-title" className="rounded-2xl border border-border bg-background">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
+    <section
+      aria-labelledby="requirements-title"
+      className="@container rounded-2xl border border-border bg-background"
+    >
+      <header className={`flex flex-wrap items-center justify-between gap-3 border-b border-border ${GUTTER} py-4`}>
         <div>
           <h2 id="requirements-title" className="font-display text-base font-bold text-foreground">
             {page.requirementsTitle}
@@ -64,7 +74,7 @@ export function RequirementsList({ detail, headerAction, RowAction }: Requiremen
       </ul>
 
       {detail.vehicles.length === 0 && (
-        <p className="border-t border-border px-6 py-4 text-sm text-muted-foreground">{page.noVehicles}</p>
+        <p className={`border-t border-border ${GUTTER} py-4 text-sm text-muted-foreground`}>{page.noVehicles}</p>
       )}
 
       {detail.vehicles.map((vehicle) => (
@@ -109,7 +119,7 @@ function GroupHeader({
 }) {
   return (
     <div
-      className={`flex flex-wrap items-center justify-between gap-2 bg-background-deep px-6 py-2.5 ${
+      className={`flex flex-wrap items-center justify-between gap-2 bg-background-deep ${GUTTER} py-2.5 ${
         first ? "" : "border-t border-border"
       }`}
     >
@@ -149,17 +159,11 @@ function RequirementRow({
         <div className="truncate text-[13px] text-muted-foreground">{requirementDetail(item)}</div>
         {renewal && <div className="text-[13px] font-medium text-warning">{renewal}</div>}
       </div>
-      <span className="justify-self-end sm:justify-self-start">
+      <span className="justify-self-end @2xl:justify-self-start">
         <Chip tone={complianceStateTone(item.state)}>{messages.complianceState[item.state]}</Chip>
       </span>
-      <span className="col-span-2 text-[13px] text-muted-foreground sm:col-span-1">
-        {expiry ?? messages.noValue}
-      </span>
-      {action ? (
-        <span className="col-span-2 sm:col-span-1 sm:justify-self-end">{action}</span>
-      ) : (
-        <span aria-hidden="true" className="hidden sm:block" />
-      )}
+      <span className="hidden text-[13px] text-muted-foreground @2xl:block">{expiry ?? messages.noValue}</span>
+      <span className="justify-self-end">{action}</span>
     </li>
   );
 }
