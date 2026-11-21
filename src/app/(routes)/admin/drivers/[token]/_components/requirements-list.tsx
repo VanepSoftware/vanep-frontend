@@ -68,7 +68,7 @@ export function RequirementsList({ detail, headerAction, RowAction }: Requiremen
             key={item.requirement}
             item={item}
             today={detail.asOf}
-            renewal={renewalNote(detail, item)}
+            renewal={renewalNote(item)}
             action={RowAction ? <RowAction detail={detail} item={item} vehicle={null} /> : null}
           />
         ))}
@@ -95,7 +95,7 @@ export function RequirementsList({ detail, headerAction, RowAction }: Requiremen
                 key={item.requirement}
                 item={item}
                 today={detail.asOf}
-                renewal={renewalNote(detail, item)}
+                renewal={renewalNote(item)}
                 action={
                   RowAction ? <RowAction detail={detail} item={item} vehicle={vehicle} /> : null
                 }

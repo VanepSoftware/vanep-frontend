@@ -9,6 +9,7 @@ import {
   isAwaitingReview,
   maskCpf,
   maskPhone,
+  maskRegistration,
   renewalNote,
   requirementDetail,
   requirementExpiry,
@@ -119,11 +120,11 @@ describe("requirementsSummary", () => {
     expect(requirementsSummary(withRenewal)).toBe("4 aprovados · 3 pendentes · 1 faltando");
   });
 
-  it("leaves out a renewal still waiting for its file", () => {
+  it("counts a renewal only when the API queues it for review", () => {
     const base = detail();
     const renewal = requirement("SCHOOL_DRIVER_COURSE", {
       state: "APPROVED",
-      pending: documentSubmission({ token: "c2", fileUrl: null, file: null }),
+      pending: documentSubmission({ token: "c2" }),
     });
     const withRenewal = detail({ driverRequirements: [...base.driverRequirements, renewal] });
     expect(requirementsSummary(withRenewal)).toBe("4 aprovados · 2 pendentes · 1 faltando");
@@ -148,28 +149,37 @@ describe("requirement row", () => {
     expect(requirementDetail(requirement("DRIVER_LICENSE", { state: "APPROVED", current: cnhSubmission() }))).toBe(
       "Categoria D · nº •••••••6789",
     );
-    expect(requirementDetail(requirement("CRIMINAL_RECORD", { state: "PENDING", current: documentSubmission() }))).toBe(
+    const approved = documentSubmission({ status: "APPROVED", documentNumber: "CERT-2026-004512" });
+    expect(requirementDetail(requirement("CRIMINAL_RECORD", { state: "APPROVED", current: approved }))).toBe(
       "nº CERT-2026-004512",
     );
     expect(
       requirementDetail(
-        requirement("CRIMINAL_RECORD", { state: "PENDING", current: documentSubmission({ documentNumber: null }) }),
+        requirement("CRIMINAL_RECORD", { state: "APPROVED", current: { ...approved, documentNumber: null } }),
       ),
     ).toBe("—");
   });
 
-  it("says when a pending item still waits for its file", () => {
+  it("says when a pending item arrived, since it has no data yet", () => {
+    expect(requirementDetail(requirement("CRIMINAL_RECORD", { state: "PENDING", current: documentSubmission() }))).toBe(
+      "Enviado em 11/11/2026",
+    );
     expect(
       requirementDetail(
-        requirement("CRIMINAL_RECORD", {
+        requirement("DRIVER_LICENSE", {
           state: "PENDING",
-          current: documentSubmission({ fileUrl: null, file: null }),
+          current: cnhSubmission({ status: "PENDING", registrationNumber: null, category: null }),
         }),
       ),
-    ).toBe("Aguardando o arquivo do motorista");
+    ).toBe("Enviado em 08/11/2026");
   });
 
-  it("tells a renewal under review from one waiting for its file", () => {
+  it("masks the CNH registration down to its last digits", () => {
+    expect(maskRegistration("01234566789")).toBe("•••••••6789");
+    expect(maskRegistration("6789")).toBe("6789");
+  });
+
+  it("notes a renewal under review next to what still counts", () => {
     const current = documentSubmission({ token: "c1", status: "APPROVED" });
     const page = detail({
       reviewQueue: [{ kind: "DRIVER_DOCUMENT", token: "c2", requirement: "SCHOOL_DRIVER_COURSE", vehicleToken: null }],
@@ -179,14 +189,9 @@ describe("requirement row", () => {
       current,
       pending: documentSubmission({ token: "c2" }),
     });
-    const waitingFile = requirement("SCHOOL_DRIVER_COURSE", {
-      state: "APPROVED",
-      current,
-      pending: documentSubmission({ token: "c3", fileUrl: null, file: null }),
-    });
-    expect(renewalNote(page, underReview)).toBe("Renovação em análise");
-    expect(renewalNote(page, waitingFile)).toBe("Renovação aguardando o arquivo do motorista");
-    expect(renewalNote(page, requirement("SCHOOL_DRIVER_COURSE", { state: "APPROVED", current }))).toBeNull();
+    expect(renewalNote(underReview)).toBe("Renovação em análise");
+    expect(renewalNote(requirement("SCHOOL_DRIVER_COURSE", { state: "APPROVED", current }))).toBeNull();
+    expect(renewalNote(requirement("SCHOOL_DRIVER_COURSE", { state: "PENDING", current, pending: current }))).toBeNull();
     expect(isAwaitingReview(page, null)).toBe(false);
   });
 
@@ -244,6 +249,24 @@ describe("historyLine", () => {
     });
   });
 
+  it("tells who corrected the data of which document", () => {
+    const event = {
+      at,
+      kind: "SUBMISSION_DATA_CORRECTED" as const,
+      vehicleToken: null,
+      actor: { token: "u", name: "Ana" },
+      rejectionReasonCode: null,
+    };
+    expect(historyLine({ ...event, requirement: "DRIVER_LICENSE", plate: null })).toEqual({
+      title: "Ana corrigiu os dados da CNH",
+      meta: "10/11 · 16:40",
+      tone: "neutral",
+    });
+    expect(historyLine({ ...event, requirement: "VEHICLE_REGISTRATION", plate: "ABC1D23" }).title).toBe(
+      "Ana corrigiu os dados do CRLV da van ABC-1D23",
+    );
+  });
+
   it("attributes sendings to the driver", () => {
     expect(
       historyLine({
@@ -278,7 +301,7 @@ describe("historyLine", () => {
       "10/11 · 16:40",
     );
     expect(
-      historyLine({ ...event, kind: "SUBMISSION_REJECTED", rejectionReasonCode: "NOT_ELIGIBLE" }).meta,
+      historyLine({ ...event, kind: "SUBMISSION_REJECTED", rejectionReasonCode: "DUPLICATE_ACCOUNT" }).meta,
     ).toBe("10/11 · 16:40");
   });
 });

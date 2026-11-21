@@ -1,11 +1,10 @@
 import { interpolate, plural, t } from "@/lib/l10n";
 
-import { formatDate, formatDateTime, formatShortDateTime, relativeDaysAgo } from "./format";
+import { dateInSaoPaulo, formatDate, formatDateTime, formatShortDateTime, relativeDaysAgo } from "./format";
 import type {
   ComplianceDriver,
   ComplianceState,
   ComplianceVehicle,
-  CredentialRequirement,
   DriverComplianceDetail,
   HistoryEvent,
   RequirementStatus,
@@ -112,11 +111,7 @@ function allRequirements(detail: DriverComplianceDetail): RequirementStatus[] {
   return [...detail.driverRequirements, ...detail.vehicles.flatMap((vehicle) => vehicle.requirements)];
 }
 
-/**
- * O envio está esperando o admin: é o que a API põe na `reviewQueue` (pendente
- * e com arquivo). Um pendente sem arquivo espera o motorista, não o admin; a
- * regra é do back, e a tela só lê a fila dele.
- */
+/** O envio está esperando o admin: é o que a API põe na `reviewQueue`. A tela só lê a fila dela. */
 export function isAwaitingReview(detail: DriverComplianceDetail, submission: Submission | null): boolean {
   return submission != null && detail.reviewQueue.some((entry) => entry.token === submission.token);
 }
@@ -146,29 +141,37 @@ export function vehicleDescription(vehicle: ComplianceVehicle): string | null {
   return model || capacity;
 }
 
-/** O que identifica o envio que conta: número do documento ou categoria da CNH. */
+/** Mostra só os 4 últimos dígitos do registro da CNH: `•••••••6789`. */
+export function maskRegistration(value: string): string {
+  return value.length > 4 ? `${"•".repeat(value.length - 4)}${value.slice(-4)}` : value;
+}
+
+/**
+ * O que identifica o envio que conta: número do documento ou categoria da CNH.
+ * Um envio pendente ainda não tem dados (o admin preenche na aprovação), então
+ * a linha diz quando ele chegou.
+ */
 export function requirementDetail(item: RequirementStatus): string {
   if (item.state === "MISSING") return item.optional ? page.optionalHint : page.notSent;
   const current = item.current;
   if (item.state === "REJECTED" && !item.pending) return page.awaitingResend;
-  if (item.state === "PENDING" && current && current.fileUrl == null) return page.awaitingFile;
-  if (current?.kind === "DRIVER_CNH") {
+  if (!current) return messages.noValue;
+  if (current.status === "PENDING") {
+    return interpolate(page.sentOn, { date: formatDate(dateInSaoPaulo(current.createdAt)) });
+  }
+  if (current.kind === "DRIVER_CNH" && current.category && current.registrationNumber) {
     return interpolate(page.cnhDetail, {
       category: current.category,
-      number: current.registrationNumberMasked,
+      number: maskRegistration(current.registrationNumber),
     });
   }
-  if (current?.documentNumber) return interpolate(page.documentNumber, { number: current.documentNumber });
+  if (current.documentNumber) return interpolate(page.documentNumber, { number: current.documentNumber });
   return messages.noValue;
 }
 
-/**
- * A renovação ao lado de uma aprovação que ainda vale: em análise, se está na
- * fila do admin, ou esperando o motorista mandar o arquivo.
- */
-export function renewalNote(detail: DriverComplianceDetail, item: RequirementStatus): string | null {
-  if (!item.pending || item.state === "PENDING") return null;
-  return isAwaitingReview(detail, item.pending) ? page.renewalPending : page.renewalAwaitingFile;
+/** A renovação em análise ao lado de uma aprovação que ainda vale. */
+export function renewalNote(item: RequirementStatus): string | null {
+  return item.pending && item.state !== "PENDING" ? page.renewalPending : null;
 }
 
 /** A validade do envio que conta. */
@@ -183,15 +186,17 @@ export function requirementExpiry(item: RequirementStatus, today: string): strin
 
 // ---------------------------------------------------------------- histórico
 
-function documentInSentence(requirement: CredentialRequirement | null, plate: string | null): string {
-  const document = requirement ? messages.requirementInSentence[requirement] : messages.noValue;
-  return plate ? interpolate(page.documentOfVehicle, { document, plate: formatPlate(plate) }) : document;
+function documentInSentence(event: HistoryEvent): string {
+  const names =
+    event.kind === "SUBMISSION_DATA_CORRECTED" ? messages.requirementAfterOf : messages.requirementInSentence;
+  const document = event.requirement ? names[event.requirement] : messages.noValue;
+  return event.plate ? interpolate(page.documentOfVehicle, { document, plate: formatPlate(event.plate) }) : document;
 }
 
 export type HistoryLine = { title: string; meta: string; tone: "brand" | "success" | "danger" | "neutral" };
 
 export function historyLine(event: HistoryEvent): HistoryLine {
-  const document = documentInSentence(event.requirement, event.plate);
+  const document = documentInSentence(event);
   const actor = actorName(event.actor);
   const title = interpolate(page.history[event.kind], { actor, document });
   const reason = historyReason(event);
@@ -227,6 +232,7 @@ function historyTone(event: HistoryEvent): HistoryLine["tone"] {
     case "ONBOARDING_SUBMITTED":
       return "brand";
     case "SUBMISSION_SENT":
+    case "SUBMISSION_DATA_CORRECTED":
       return "neutral";
   }
 }

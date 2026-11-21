@@ -149,17 +149,23 @@ export function nextZoom(current: number, direction: 1 | -1): number {
 
 export type Fact = { label: string; value: string; hint?: string };
 
-/** O que o motorista informou no envio. */
+/**
+ * O que se sabe do envio: o tipo, os dados que o admin leu do arquivo na
+ * aprovação (nenhum num envio pendente ou recusado) e quando chegou.
+ */
 export function submissionFacts(found: FoundSubmission, today: string): Fact[] {
   const { submission, item } = found;
   const facts: Fact[] = [{ label: review.facts.type, value: messages.requirement[item.requirement] }];
+  const date = (label: string, value: string | null) => {
+    if (value) facts.push({ label, value: formatDate(value) });
+  };
 
   if (submission.kind === "DRIVER_CNH") {
-    facts.push(
-      { label: review.facts.category, value: submission.category },
-      { label: review.facts.registration, value: submission.registrationNumberMasked },
-    );
-    if (submission.issueDate) facts.push({ label: review.facts.issueDate, value: formatDate(submission.issueDate) });
+    if (submission.category) facts.push({ label: review.facts.category, value: submission.category });
+    if (submission.registrationNumber) {
+      facts.push({ label: review.facts.registration, value: submission.registrationNumber });
+    }
+    date(review.facts.issueDate, submission.issueDate);
   } else if (submission.documentNumber) {
     facts.push({ label: review.facts.number, value: submission.documentNumber });
   }
@@ -170,6 +176,14 @@ export function submissionFacts(found: FoundSubmission, today: string): Fact[] {
       value: formatDate(submission.expiresAt),
       hint: expiryDistance(submission.expiresAt, today),
     });
+  }
+
+  if (submission.kind === "DRIVER_CNH") {
+    date(review.facts.firstLicenseDate, submission.firstLicenseDate);
+    if (submission.issuingState) facts.push({ label: review.facts.issuingState, value: submission.issuingState });
+    if (submission.securityNumber) {
+      facts.push({ label: review.facts.securityNumber, value: submission.securityNumber });
+    }
   }
 
   facts.push({
@@ -231,6 +245,20 @@ export function decisionLine(decision: {
   return { title, reason };
 }
 
+/** "Dados corrigidos por Ana em 16/11 · 10:02", quando o envio aprovado foi corrigido (D25). */
+export function correctionLine(submission: Submission): string | null {
+  if (!submission.dataCorrectedAt) return null;
+  return interpolate(review.facts.correctedBy, {
+    actor: actor(submission.dataCorrectedBy),
+    at: formatShortDateTime(submission.dataCorrectedAt),
+  });
+}
+
+/** Só um envio aprovado tem dados para corrigir; a página não traz os substituídos. */
+export function canCorrectData(submission: Submission): boolean {
+  return submission.status === "APPROVED";
+}
+
 // ---------------------------------------------------------------- reprovar
 
 export const DOCUMENT_REJECTION_REASONS: readonly DocumentRejectionReason[] = [
@@ -239,10 +267,10 @@ export const DOCUMENT_REJECTION_REASONS: readonly DocumentRejectionReason[] = [
   "DATA_MISMATCH",
   "WRONG_TYPE",
   "INCOMPLETE",
+  "NOT_ELIGIBLE",
   "OTHER",
 ];
 
-/** O assunto da prévia: o nome do documento e, se é da van, a placa. */
 /** O documento numa frase: `o CRLV da van ABC-1D23`, `a CNH de Ana Souza`. */
 export function submissionInSentence(detail: DriverComplianceDetail, found: FoundSubmission): string {
   const document = messages.requirementInSentence[found.item.requirement];

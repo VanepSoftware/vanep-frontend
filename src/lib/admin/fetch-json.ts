@@ -29,7 +29,7 @@ export async function fetchJson<T>(input: string, init?: RequestInit): Promise<T
     });
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") throw error;
-    throw new ApiProblemError({ status: 0, code: null, detail: null, blockers: [] });
+    throw new ApiProblemError({ status: 0, code: null, detail: null, field: null, errors: [], blockers: [] });
   }
 
   if (!response.ok) throw new ApiProblemError(await readApiProblem(response));

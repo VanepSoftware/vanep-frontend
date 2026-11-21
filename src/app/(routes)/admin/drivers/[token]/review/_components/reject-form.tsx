@@ -24,6 +24,8 @@ const form = messages.review.rejectForm;
 type RejectFormProps = {
   detail: DriverComplianceDetail;
   found: FoundSubmission;
+  /** O motivo já escolhido por um atalho do formulário de dados (vencido, categoria). */
+  initialCode?: DocumentRejectionReason | null;
   busy: boolean;
   error: string | null;
   onSubmit: (body: SubmissionStatusRequest) => void;
@@ -31,9 +33,9 @@ type RejectFormProps = {
 };
 
 /** Reprovar um envio: o motivo estruturado e a mensagem (obrigatória só em "Outro motivo"). */
-export function RejectForm({ detail, found, busy, error, onSubmit, onCancel }: RejectFormProps) {
+export function RejectForm({ detail, found, initialCode = null, busy, error, onSubmit, onCancel }: RejectFormProps) {
   const titleId = useId();
-  const [code, setCode] = useState<DocumentRejectionReason | null>(null);
+  const [code, setCode] = useState<DocumentRejectionReason | null>(initialCode);
   const [message, setMessage] = useState("");
   const invalid = rejectionMessageError(code, message);
   const consequence = rejectionConsequence(detail, found);

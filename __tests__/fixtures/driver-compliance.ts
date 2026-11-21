@@ -9,12 +9,13 @@ import type {
 
 export const TODAY = "2026-11-14";
 
+/** Pendente: o motorista mandou só o arquivo, e os dados ficam para a aprovação (D2). */
 export function documentSubmission(overrides: Partial<DocumentSubmission> = {}): DocumentSubmission {
   return {
     kind: "DRIVER_DOCUMENT",
     token: "doc1",
-    documentNumber: "CERT-2026-004512",
-    expiresAt: "2027-02-14",
+    documentNumber: null,
+    expiresAt: null,
     status: "PENDING",
     reviewMethod: null,
     rejectionReasonCode: null,
@@ -25,6 +26,8 @@ export function documentSubmission(overrides: Partial<DocumentSubmission> = {}):
     version: 3,
     fileUrl: "/api/driver-documents/doc1/file?v=m1",
     file: { mimeType: "application/pdf", sizeBytes: 421_888, originalName: "certidao.pdf" },
+    dataCorrectedAt: null,
+    dataCorrectedBy: null,
     ...overrides,
   };
 }
@@ -45,9 +48,14 @@ export function cnhSubmission(overrides: Partial<CnhSubmission> = {}): CnhSubmis
     version: 1,
     fileUrl: "/api/driver-cnhs/cnh1/file?v=m2",
     file: { mimeType: "image/jpeg", sizeBytes: 120_000, originalName: "cnh.jpg" },
+    dataCorrectedAt: null,
+    dataCorrectedBy: null,
+    registrationNumber: "01234566789",
     category: "D",
     issueDate: "2024-03-10",
-    registrationNumberMasked: "•••••••6789",
+    firstLicenseDate: "2015-06-02",
+    securityNumber: null,
+    issuingState: "DF",
     ...overrides,
   };
 }
@@ -112,7 +120,7 @@ export function vehicle(overrides: Partial<ComplianceVehicle> = {}): ComplianceV
       }),
       requirement("VEHICLE_INSPECTION", {
         state: "PENDING",
-        current: documentSubmission({ kind: "VEHICLE_DOCUMENT", token: "vst1", documentNumber: "VST-88213" }),
+        current: documentSubmission({ kind: "VEHICLE_DOCUMENT", token: "vst1" }),
       }),
       requirement("SCHOOL_VEHICLE_AUTHORIZATION"),
     ],
@@ -130,7 +138,12 @@ export function detail(overrides: Partial<DriverComplianceDetail> = {}): DriverC
       requirement("SCHOOL_DRIVER_COURSE", {
         state: "APPROVED",
         satisfied: true,
-        current: documentSubmission({ token: "c1", status: "APPROVED", documentNumber: "CURSO-001" }),
+        current: documentSubmission({
+          token: "c1",
+          status: "APPROVED",
+          documentNumber: "CURSO-001",
+          expiresAt: "2030-05-01",
+        }),
       }),
       requirement("CRIMINAL_RECORD", { state: "PENDING", current: documentSubmission() }),
       requirement("MUNICIPAL_AUTHORIZATION"),

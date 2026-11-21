@@ -16,6 +16,11 @@ export function submissionStatusUrl(kind: SubmissionKind, token: string): string
   return `/api/admin/${RESOURCE[kind]}/${encodeURIComponent(token)}/status`;
 }
 
+/** Rota do proxy que corrige os dados de um envio aprovado (`PUT`, D25). */
+export function submissionDataUrl(kind: SubmissionKind, token: string): string {
+  return `/api/admin/${RESOURCE[kind]}/${encodeURIComponent(token)}/data`;
+}
+
 /**
  * O `fileUrl` vem relativo à API (`/api/driver-documents/{token}/file?v=…`).
  * O navegador abre o arquivo pelo proxy do admin, na mesma rota sob `/api/admin`,

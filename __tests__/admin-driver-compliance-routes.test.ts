@@ -18,6 +18,9 @@ import { POST as rejectDriver } from "@/app/api/admin/drivers/[token]/reject/rou
 import { PUT as decideDriverDocument } from "@/app/api/admin/driver-documents/[token]/status/route";
 import { PUT as decideVehicleDocument } from "@/app/api/admin/vehicle-documents/[token]/status/route";
 import { PUT as decideCnh } from "@/app/api/admin/driver-cnhs/[token]/status/route";
+import { PUT as correctDriverDocument } from "@/app/api/admin/driver-documents/[token]/data/route";
+import { PUT as correctVehicleDocument } from "@/app/api/admin/vehicle-documents/[token]/data/route";
+import { PUT as correctCnh } from "@/app/api/admin/driver-cnhs/[token]/data/route";
 import { GET as driverDocumentFile } from "@/app/api/admin/driver-documents/[token]/file/route";
 import { GET as vehicleDocumentFile } from "@/app/api/admin/vehicle-documents/[token]/file/route";
 import { GET as cnhFile } from "@/app/api/admin/driver-cnhs/[token]/file/route";
@@ -96,6 +99,20 @@ describe("admin driver compliance routes", () => {
       ["vehicle document", decideVehicleDocument, "/api/vehicle-documents/tok/status"],
       ["CNH", decideCnh, "/api/driver-cnhs/tok/status"],
     ] as const)("puts the %s status with the version", async (_name, handler, path) => {
+      const req = new NextRequest(`${BASE}${path.replace("/api", "")}`, { method: "PUT", body });
+      await handler(req, ctx("tok"));
+      expect(proxyMock).toHaveBeenCalledWith(req, path, { method: "PUT", body });
+    });
+  });
+
+  describe("data corrections", () => {
+    const body = JSON.stringify({ version: 4, expiresAt: "2027-01-31" });
+
+    it.each([
+      ["driver document", correctDriverDocument, "/api/driver-documents/tok/data"],
+      ["vehicle document", correctVehicleDocument, "/api/vehicle-documents/tok/data"],
+      ["CNH", correctCnh, "/api/driver-cnhs/tok/data"],
+    ] as const)("puts the corrected %s data with the version", async (_name, handler, path) => {
       const req = new NextRequest(`${BASE}${path.replace("/api", "")}`, { method: "PUT", body });
       await handler(req, ctx("tok"));
       expect(proxyMock).toHaveBeenCalledWith(req, path, { method: "PUT", body });

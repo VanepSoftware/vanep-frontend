@@ -4,29 +4,54 @@ import { useId, useState } from "react";
 
 import { Chip } from "@/components/ui/chip";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { ApproveIcon, RejectIcon } from "@/components/ui/decision-icons";
+import { ApproveIcon, EditIcon, RejectIcon } from "@/components/ui/decision-icons";
+import type { ApiProblem } from "@/lib/admin/api-problem";
+import { formatDateTime } from "@/lib/admin/driver-compliance/format";
 import { problemMessage } from "@/lib/admin/driver-compliance/messages";
 import {
   type Fact,
   type FoundSubmission,
+  canCorrectData,
+  correctionLine,
   decisionLine,
   registrationChecks,
   submissionFacts,
   submissionInSentence,
 } from "@/lib/admin/driver-compliance/review";
+import {
+  type DataField,
+  type DataValues,
+  type FieldErrors,
+  dataBody,
+  dataFields,
+  dataValues,
+  firstErrorField,
+  problemFieldErrors,
+  validateData,
+} from "@/lib/admin/driver-compliance/submission-data";
 import { documentStatusTone } from "@/lib/admin/driver-compliance/tone";
-import type { DriverComplianceDetail, SubmissionStatusRequest } from "@/lib/admin/driver-compliance/types";
-import { submissionStatusUrl } from "@/lib/admin/driver-compliance/urls";
+import type {
+  DocumentRejectionReason,
+  DriverComplianceDetail,
+  SubmissionDataRequest,
+  SubmissionStatusRequest,
+} from "@/lib/admin/driver-compliance/types";
+import { submissionDataUrl, submissionStatusUrl } from "@/lib/admin/driver-compliance/urls";
 import { ApiProblemError, fetchJson } from "@/lib/admin/fetch-json";
 import { interpolate, t } from "@/lib/l10n";
 
+import { DataFields, fieldId } from "./data-fields";
 import { RejectForm } from "./reject-form";
 
 const messages = t("admin").driverReview;
 const review = messages.review;
+const data = review.data;
 
-/** A decisão foi gravada, ou a API recusou porque o envio mudou e a tela tem de recarregar. */
-export type ReviewOutcome = { kind: "decided" } | { kind: "stale"; message: string };
+/**
+ * A decisão foi gravada, os dados foram corrigidos, ou a API recusou porque o
+ * envio mudou e a tela tem de recarregar.
+ */
+export type ReviewOutcome = { kind: "decided" } | { kind: "corrected" } | { kind: "stale"; message: string };
 
 type ReviewPanelProps = {
   detail: DriverComplianceDetail;
@@ -34,50 +59,125 @@ type ReviewPanelProps = {
   onOutcome: (outcome: ReviewOutcome) => void;
 };
 
-/** Os erros que dizem que a tela está velha: outra pessoa decidiu ou o motorista trocou o arquivo. */
-function isStale(error: unknown): error is ApiProblemError {
-  if (!(error instanceof ApiProblemError)) return false;
-  return error.problem.code === "document.review.stale" || error.problem.code === "document.submission.reviewed";
-}
+/**
+ * Os erros que dizem que a tela está velha: outra pessoa decidiu ou corrigiu,
+ * o motorista trocou o arquivo, ou o envio deixou de ser o aprovado.
+ */
+const STALE_CODES = new Set(["document.review.stale", "document.submission.reviewed", "document.data.not_approved"]);
+
+type Mode = "data" | "reject" | "correct";
 
 export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
   const { submission, item } = found;
-  const [mode, setMode] = useState<"facts" | "reject">("facts");
+  const pending = submission.status === "PENDING";
+  const fields = dataFields(submission.kind, item.requirement);
+  const idPrefix = useId();
+
+  const [mode, setMode] = useState<Mode>("data");
+  const [rejectCode, setRejectCode] = useState<DocumentRejectionReason | null>(null);
+  const [values, setValues] = useState<DataValues>(() => dataValues(submission));
+  /** Depois da primeira tentativa, os erros da tela aparecem e se atualizam a cada tecla. */
+  const [attempted, setAttempted] = useState(false);
+  const [serverErrors, setServerErrors] = useState<FieldErrors>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [revealDocument, setRevealDocument] = useState(false);
-  /** A decisão esperando o "tem certeza?": aprovar, ou reprovar com o motivo já escolhido. */
+  /** A decisão esperando o "tem certeza?": aprovar com os dados, ou reprovar com o motivo. */
   const [confirming, setConfirming] = useState<SubmissionStatusRequest | null>(null);
-  const pending = submission.status === "PENDING";
-  // A API recusa aprovar sem arquivo (422); a tela já sabe e nem oferece.
-  const hasFile = submission.fileUrl != null;
-  const blockedId = useId();
-  const decided = decisionLine(submission);
-  const last = pending && item.lastDecision ? decisionLine(item.lastDecision) : null;
 
-  /** Aprovar e reprovar: o mesmo `PUT`, com a `version` que o admin viu. */
-  async function decide(body: SubmissionStatusRequest) {
+  const correcting = mode === "correct";
+  const clientErrors = attempted ? validateData(fields, values, detail.asOf, { allowPast: correcting }) : {};
+  const errors: FieldErrors = { ...serverErrors, ...clientErrors };
+
+  function focusField(field: DataField | null) {
+    if (field) document.getElementById(fieldId(idPrefix, field))?.focus();
+  }
+
+  function changeValue(field: DataField, value: string) {
+    setValues((current) => ({ ...current, [field]: value }));
+    setServerErrors((current) => {
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  }
+
+  function openReject(code: DocumentRejectionReason | null) {
+    setError(null);
+    setRejectCode(code);
+    setMode("reject");
+  }
+
+  function resetForm(next: Mode) {
+    setValues(dataValues(submission));
+    setAttempted(false);
+    setServerErrors({});
+    setError(null);
+    setMode(next);
+  }
+
+  /** Confere o que a tela já sabe; com erro, leva o foco ao primeiro campo marcado. */
+  function readyBody(): ReturnType<typeof dataBody> | null {
+    setAttempted(true);
+    setError(null);
+    const invalid = validateData(fields, values, detail.asOf, { allowPast: correcting });
+    const first = firstErrorField(fields, invalid);
+    if (first) {
+      setError(data.checkFields);
+      focusField(first);
+      return null;
+    }
+    return dataBody(fields, values);
+  }
+
+  function handleProblem(problem: ApiProblem) {
+    if (problem.code && STALE_CODES.has(problem.code)) {
+      onOutcome({ kind: "stale", message: problemMessage(problem) });
+      return;
+    }
+    const fieldErrors = problemFieldErrors(problem, fields);
+    const first = firstErrorField(fields, fieldErrors);
+    if (first) {
+      setServerErrors(fieldErrors);
+      setError(data.checkFields);
+      focusField(first);
+    } else {
+      setError(problemMessage(problem));
+    }
+  }
+
+  /** Aprovar, reprovar e corrigir: um `PUT` com a `version` que o admin viu. */
+  async function send(url: string, body: SubmissionStatusRequest | SubmissionDataRequest, done: ReviewOutcome) {
     setBusy(true);
     setError(null);
     try {
-      await fetchJson(submissionStatusUrl(submission.kind, submission.token), {
-        method: "PUT",
-        body: JSON.stringify(body),
-      });
-      onOutcome({ kind: "decided" });
+      await fetchJson(url, { method: "PUT", body: JSON.stringify(body) });
+      onOutcome(done);
     } catch (caught) {
-      if (isStale(caught)) {
-        onOutcome({ kind: "stale", message: problemMessage(caught.problem) });
-      } else {
-        setError(caught instanceof ApiProblemError ? problemMessage(caught.problem) : messages.errors.generic);
-      }
+      if (caught instanceof ApiProblemError) handleProblem(caught.problem);
+      else setError(messages.errors.generic);
     } finally {
       setBusy(false);
       setConfirming(null);
     }
   }
 
-  const document = submissionInSentence(detail, found);
+  function requestApprove(event: React.FormEvent) {
+    event.preventDefault();
+    const body = readyBody();
+    if (body) setConfirming({ status: "APPROVED", version: submission.version, ...body });
+  }
+
+  function saveCorrection(event: React.FormEvent) {
+    event.preventDefault();
+    const body = readyBody();
+    if (!body) return;
+    void send(submissionDataUrl(submission.kind, submission.token), { version: submission.version, ...body }, {
+      kind: "corrected",
+    });
+  }
+
+  const documentName = submissionInSentence(detail, found);
   const rejecting = confirming?.status === "REJECTED";
   const confirmText = rejecting ? review.confirmReject : review.confirmApprove;
   const confirmDialog = (
@@ -86,20 +186,23 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
       busy={busy}
       tone={rejecting ? "danger" : "success"}
       icon={rejecting ? <RejectIcon /> : <ApproveIcon />}
-      title={interpolate(confirmText.title, { document })}
+      title={interpolate(confirmText.title, { document: documentName })}
       description={confirmText.description}
       confirmLabel={confirmText.confirm}
-      onConfirm={() => confirming && void decide(confirming)}
+      onConfirm={() =>
+        confirming && void send(submissionStatusUrl(submission.kind, submission.token), confirming, { kind: "decided" })
+      }
       onCancel={() => setConfirming(null)}
     />
   );
 
   if (pending && mode === "reject") {
     return (
-      <aside aria-label={review.rejectForm.title} className="flex flex-col rounded-2xl border border-border bg-background">
+      <aside aria-label={review.rejectForm.title} className={PANEL}>
         <RejectForm
           detail={detail}
           found={found}
+          initialCode={rejectCode}
           busy={busy}
           error={error}
           onSubmit={(body) => {
@@ -108,7 +211,7 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
           }}
           onCancel={() => {
             setError(null);
-            setMode("facts");
+            setMode("data");
           }}
         />
         {confirmDialog}
@@ -116,89 +219,167 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
     );
   }
 
-  return (
-    <aside aria-label={review.facts.title} className="flex flex-col rounded-2xl border border-border bg-background">
-      <div className="flex-1 p-6">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display text-base font-bold text-foreground">{review.facts.title}</h2>
-          <Chip tone={documentStatusTone(submission.status)}>{messages.documentStatus[submission.status]}</Chip>
-        </div>
-        <FactList facts={submissionFacts(found, detail.asOf)} />
-
-        <div className="mt-6 rounded-xl bg-background-deep p-4">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold text-foreground">{review.checks.title}</h3>
-            {!found.vehicle && detail.driver.document && (
-              <button
-                type="button"
-                onClick={() => setRevealDocument((current) => !current)}
-                aria-label={
-                  revealDocument
-                    ? messages.driver.hideLabel.document
-                    : messages.driver.revealLabel.document
-                }
-                className="text-xs font-semibold text-brand hover:text-brand-strong"
-              >
-                {revealDocument ? messages.driver.hide : messages.driver.reveal}
-              </button>
-            )}
-          </div>
-          <FactList facts={registrationChecks(detail, found, revealDocument)} compact />
-        </div>
-
-        {decided && <DecisionBlock title={review.decidedTitle} line={decided} />}
-        {last && (
-          <DecisionBlock
-            title={review.lastDecisionTitle}
-            line={last}
-            note={item.lastDecision?.supersededAt ? review.lastDecisionNote : undefined}
-          />
+  const checks = (
+    <div className="mt-6 rounded-xl bg-background-deep p-4">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-foreground">{review.checks.title}</h3>
+        {!found.vehicle && detail.driver.document && (
+          <button
+            type="button"
+            onClick={() => setRevealDocument((current) => !current)}
+            aria-label={revealDocument ? messages.driver.hideLabel.document : messages.driver.revealLabel.document}
+            className="text-xs font-semibold text-brand hover:text-brand-strong"
+          >
+            {revealDocument ? messages.driver.hide : messages.driver.reveal}
+          </button>
         )}
       </div>
+      <FactList facts={registrationChecks(detail, found, revealDocument)} compact />
+    </div>
+  );
+  const last = pending && item.lastDecision ? decisionLine(item.lastDecision) : null;
+  const errorBox = error && (
+    <p role="alert" className="mb-3 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">
+      {error}
+    </p>
+  );
+  const formFields = (
+    <DataFields
+      idPrefix={idPrefix}
+      fields={fields}
+      values={values}
+      errors={errors}
+      today={detail.asOf}
+      disabled={busy}
+      onChange={changeValue}
+      onRejectAs={pending ? openReject : undefined}
+    />
+  );
 
-      {pending && (
+  // Pendente: o admin lê o arquivo, preenche os dados e decide.
+  if (pending) {
+    return (
+      <aside aria-label={review.facts.title} className={PANEL}>
+        <form noValidate onSubmit={requestApprove} className="flex flex-1 flex-col">
+          <div className="flex-1 p-6">
+            <PanelTitle title={review.facts.title} status={submission.status} />
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              {data.fillHint}{" "}
+              {interpolate(review.sentBy, { at: formatDateTime(submission.createdAt) })}
+            </p>
+            {formFields}
+            {checks}
+            {last && (
+              <DecisionBlock
+                title={review.lastDecisionTitle}
+                line={last}
+                note={item.lastDecision?.supersededAt ? review.lastDecisionNote : undefined}
+              />
+            )}
+          </div>
+
+          <footer className="border-t border-border p-4">
+            {errorBox}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => openReject(null)}
+                disabled={busy}
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-danger-border px-5 text-sm font-semibold text-danger hover:border-danger hover:bg-danger-soft disabled:opacity-50"
+              >
+                <RejectIcon />
+                {review.reject}
+              </button>
+              <button
+                type="submit"
+                disabled={busy}
+                className="inline-flex h-10 items-center gap-2 rounded-lg bg-success px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:brightness-110 disabled:opacity-50"
+              >
+                {!busy && <ApproveIcon />}
+                {busy ? review.approving : review.approve}
+              </button>
+            </div>
+          </footer>
+        </form>
+        {confirmDialog}
+      </aside>
+    );
+  }
+
+  // Aprovado: corrigir um erro de digitação, sem mexer na decisão nem no arquivo.
+  if (correcting) {
+    return (
+      <aside aria-label={data.correctTitle} className={PANEL}>
+        <form noValidate onSubmit={saveCorrection} className="flex flex-1 flex-col">
+          <div className="flex-1 p-6">
+            <PanelTitle title={data.correctTitle} status={submission.status} />
+            <p className="mt-1 text-[13px] text-muted-foreground">{data.correctHint}</p>
+            {formFields}
+            {checks}
+          </div>
+          <footer className="border-t border-border p-4">
+            {errorBox}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => resetForm("data")}
+                disabled={busy}
+                className="h-10 rounded-lg border border-border px-4 text-sm text-foreground hover:border-border-strong hover:bg-muted disabled:opacity-50"
+              >
+                {data.cancel}
+              </button>
+              <button
+                type="submit"
+                disabled={busy}
+                className="h-10 rounded-lg bg-brand px-5 text-sm font-semibold text-brand-foreground shadow-sm hover:brightness-110 disabled:opacity-50"
+              >
+                {busy ? data.saving : data.save}
+              </button>
+            </div>
+          </footer>
+        </form>
+      </aside>
+    );
+  }
+
+  // Decidido: o que o admin leu do arquivo e quem decidiu.
+  const decided = decisionLine(submission);
+  const corrected = correctionLine(submission);
+  return (
+    <aside aria-label={review.facts.title} className={PANEL}>
+      <div className="flex-1 p-6">
+        <PanelTitle title={review.facts.title} status={submission.status} />
+        <FactList facts={submissionFacts(found, detail.asOf)} />
+        {corrected && <p className="mt-3 text-xs text-muted-foreground">{corrected}</p>}
+        {checks}
+        {decided && <DecisionBlock title={review.decidedTitle} line={decided} />}
+      </div>
+      {canCorrectData(submission) && (
         <footer className="border-t border-border p-4">
-          {error && (
-            <p role="alert" className="mb-3 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">
-              {error}
-            </p>
-          )}
-          {!hasFile && (
-            <p id={blockedId} className="mb-3 text-[13px] text-muted-foreground">
-              {messages.errors["document.review.file_required"]}
-            </p>
-          )}
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end">
             <button
               type="button"
-              onClick={() => {
-                setError(null);
-                setMode("reject");
-              }}
-              disabled={busy}
-              className="inline-flex h-10 items-center gap-2 rounded-lg border border-danger-border px-5 text-sm font-semibold text-danger hover:border-danger hover:bg-danger-soft disabled:opacity-50"
+              onClick={() => resetForm("correct")}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-4 text-sm font-semibold text-foreground hover:border-border-strong hover:bg-muted"
             >
-              <RejectIcon />
-              {review.reject}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setError(null);
-                setConfirming({ status: "APPROVED", version: submission.version });
-              }}
-              disabled={busy || !hasFile}
-              aria-describedby={hasFile ? undefined : blockedId}
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-success px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:brightness-110 disabled:opacity-50"
-            >
-              {!busy && <ApproveIcon />}
-              {busy ? review.approving : review.approve}
+              <EditIcon />
+              {data.correct}
             </button>
           </div>
         </footer>
       )}
-      {confirmDialog}
     </aside>
+  );
+}
+
+const PANEL = "flex flex-col rounded-2xl border border-border bg-background";
+
+function PanelTitle({ title, status }: { title: string; status: FoundSubmission["submission"]["status"] }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <h2 className="font-display text-base font-bold text-foreground">{title}</h2>
+      <Chip tone={documentStatusTone(status)}>{messages.documentStatus[status]}</Chip>
+    </div>
   );
 }
 

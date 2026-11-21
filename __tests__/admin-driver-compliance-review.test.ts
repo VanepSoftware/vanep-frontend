@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   DOCUMENT_REJECTION_REASONS,
   ZOOM_STEPS,
+  canCorrectData,
+  correctionLine,
   decisionLine,
   doneScenario,
   driverHref,
@@ -100,10 +102,9 @@ describe("rowSubmission", () => {
     expect(rowSubmission(queued, requirement("SCHOOL_DRIVER_COURSE"))).toBeNull();
   });
 
-  it("keeps what counts while the renewal waits for its file", () => {
-    const withoutFile = documentSubmission({ token: "c2", fileUrl: null, file: null });
+  it("keeps what counts when the API does not queue the renewal", () => {
     const page = detail({ reviewQueue: [] });
-    expect(rowSubmission(page, requirement("SCHOOL_DRIVER_COURSE", { current, pending: withoutFile }))).toBe(current);
+    expect(rowSubmission(page, requirement("SCHOOL_DRIVER_COURSE", { current, pending }))).toBe(current);
   });
 });
 
@@ -154,43 +155,74 @@ describe("file", () => {
 });
 
 describe("submissionFacts", () => {
-  it("lists what the driver informed on a document", () => {
+  it("has only the type and the arrival of a pending document, which has no data yet", () => {
     const found = findSubmission(detail(), "DRIVER_DOCUMENT", "doc1")!;
     expect(submissionFacts(found, TODAY)).toEqual([
       { label: "Tipo", value: "Certidão criminal" },
-      { label: "Número", value: "CERT-2026-004512" },
-      { label: "Validade", value: "14/02/2027", hint: "vence em 92 dias" },
       { label: "Enviado", value: "11/11/2026 às 09:12", hint: "pelo motorista" },
     ]);
   });
 
-  it("lists the CNH's own data", () => {
+  it("lists the data the reviewer read on an approved document", () => {
+    const found = findSubmission(detail(), "DRIVER_DOCUMENT", "c1")!;
+    expect(submissionFacts(found, TODAY)).toEqual([
+      { label: "Tipo", value: "Curso especializado" },
+      { label: "Número", value: "CURSO-001" },
+      { label: "Validade", value: "01/05/2030", hint: "vence em 1264 dias" },
+      { label: "Enviado", value: "11/11/2026 às 09:12", hint: "pelo motorista" },
+    ]);
+  });
+
+  it("lists the CNH's own data, leaving out what was not filled", () => {
     const found = findSubmission(detail(), "DRIVER_CNH", "cnh1")!;
-    expect(submissionFacts(found, TODAY).map((fact) => fact.label)).toEqual([
+    expect(submissionFacts(found, TODAY).map((fact) => [fact.label, fact.value])).toEqual([
+      ["Tipo", "CNH"],
+      ["Categoria", "D"],
+      ["Registro", "01234566789"],
+      ["Emissão", "10/03/2024"],
+      ["Válida até", "10/03/2029"],
+      ["1ª habilitação", "02/06/2015"],
+      ["UF emissora", "DF"],
+      ["Enviado", "08/11/2026 às 14:32"],
+    ]);
+
+    const page = detail({
+      driverRequirements: [
+        requirement("DRIVER_LICENSE", {
+          state: "APPROVED",
+          current: cnhSubmission({ firstLicenseDate: null, issuingState: null, securityNumber: "12345678901" }),
+        }),
+      ],
+    });
+    expect(submissionFacts(findSubmission(page, "DRIVER_CNH", "cnh1")!, TODAY).map((fact) => fact.label)).toEqual([
       "Tipo",
       "Categoria",
       "Registro",
       "Emissão",
       "Válida até",
+      "Nº de segurança",
       "Enviado",
     ]);
   });
+});
 
-  it("leaves out what was not informed", () => {
-    const page = detail({
-      driverRequirements: [
-        requirement("DRIVER_LICENSE", {
-          state: "PENDING",
-          current: cnhSubmission({ issueDate: null, expiresAt: null }),
-        }),
-        requirement("CRIMINAL_RECORD", {
-          state: "PENDING",
-          current: documentSubmission({ documentNumber: null, expiresAt: null }),
-        }),
-      ],
-    });
-    expect(submissionFacts(findSubmission(page, "DRIVER_CNH", "cnh1")!, TODAY)).toHaveLength(4);
-    expect(submissionFacts(findSubmission(page, "DRIVER_DOCUMENT", "doc1")!, TODAY)).toHaveLength(2);
+describe("data correction", () => {
+  it("is offered only on an approved submission", () => {
+    expect(canCorrectData(cnhSubmission())).toBe(true);
+    expect(canCorrectData(documentSubmission())).toBe(false);
+    expect(canCorrectData(documentSubmission({ status: "REJECTED" }))).toBe(false);
+  });
+
+  it("says who corrected the data and when", () => {
+    expect(correctionLine(cnhSubmission())).toBeNull();
+    expect(
+      correctionLine(
+        cnhSubmission({ dataCorrectedAt: "2026-11-16T13:02:00Z", dataCorrectedBy: { token: "u", name: "Ana" } }),
+      ),
+    ).toBe("Dados corrigidos por Ana em 16/11 · 10:02");
+    expect(correctionLine(cnhSubmission({ dataCorrectedAt: "2026-11-16T13:02:00Z", dataCorrectedBy: null }))).toBe(
+      "Dados corrigidos por Um admin em 16/11 · 10:02",
+    );
   });
 });
 
@@ -272,6 +304,7 @@ describe("rejecting", () => {
       "DATA_MISMATCH",
       "WRONG_TYPE",
       "INCOMPLETE",
+      "NOT_ELIGIBLE",
       "OTHER",
     ]);
   });

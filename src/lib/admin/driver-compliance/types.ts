@@ -1,6 +1,6 @@
 /**
- * Contrato das rotas de revisão de motoristas da API (VAN-86, D15 a D20 do
- * `openspec/changes/vehicle-documents/design.md` do back). Os nomes seguem a
+ * Contrato das rotas de revisão de motoristas da API (VAN-86, D2, D14, D15 a
+ * D20 e D25 do `openspec/changes/driver-credentials-review/design.md` do back). Os nomes seguem a
  * resposta da API um a um, para a tela nunca traduzir campo.
  */
 
@@ -21,6 +21,7 @@ export type DocumentRejectionReason =
   | "DATA_MISMATCH"
   | "WRONG_TYPE"
   | "INCOMPLETE"
+  | "NOT_ELIGIBLE"
   | "OTHER";
 
 export type DriverRejectionReason = "DATA_MISMATCH" | "NOT_ELIGIBLE" | "DUPLICATE_ACCOUNT" | "OTHER";
@@ -57,6 +58,7 @@ export type HistoryKind =
   | "SUBMISSION_SENT"
   | "SUBMISSION_APPROVED"
   | "SUBMISSION_REJECTED"
+  | "SUBMISSION_DATA_CORRECTED"
   | "ONBOARDING_SUBMITTED"
   | "DRIVER_APPROVED"
   | "DRIVER_REJECTED";
@@ -104,6 +106,10 @@ export type SubmissionFile = {
   originalName: string | null;
 };
 
+/**
+ * O motorista manda só o arquivo (D2): os dados do documento são preenchidos
+ * pelo admin na aprovação e vêm nulos enquanto o envio está `PENDING`.
+ */
 type SubmissionBase = {
   token: string;
   documentNumber: string | null;
@@ -119,18 +125,27 @@ type SubmissionBase = {
   /** Relativa à API (`/api/…?v=<token da mídia>`). Use `adminFileUrl` para abrir pelo proxy. */
   fileUrl: string | null;
   file: SubmissionFile | null;
+  /** A última correção dos dados de um envio aprovado (D25); nula se nunca corrigido. */
+  dataCorrectedAt: IsoDateTime | null;
+  dataCorrectedBy: UserRef | null;
 };
 
 export type DocumentSubmission = SubmissionBase & {
   kind: "DRIVER_DOCUMENT" | "VEHICLE_DOCUMENT";
 };
 
-/** Na CNH, `expiresAt` é a `validUntil`. O arquivo pode ser imagem ou PDF, como nos documentos. */
+/**
+ * Na CNH, `expiresAt` é a `validUntil`. O número vem inteiro, porque o admin o
+ * digitou e o corrige; a linha do checklist mascara. Tudo nulo enquanto `PENDING`.
+ */
 export type CnhSubmission = SubmissionBase & {
   kind: "DRIVER_CNH";
-  category: string;
+  registrationNumber: string | null;
+  category: string | null;
   issueDate: IsoDate | null;
-  registrationNumberMasked: string;
+  firstLicenseDate: IsoDate | null;
+  securityNumber: string | null;
+  issuingState: string | null;
 };
 
 export type Submission = DocumentSubmission | CnhSubmission;
@@ -206,7 +221,7 @@ export type ComplianceVehicle = {
   requirements: RequirementStatus<VehicleRequirement>[];
 };
 
-/** Ordem do "pendente 1 de N": requisitos do motorista, depois as vans por placa. */
+/** Ordem do "pendente 1 de N": requisitos do motorista, depois as vans na ordem de `vehicles`. */
 export type ReviewQueueItem = {
   kind: SubmissionKind;
   token: string;
@@ -239,15 +254,40 @@ export type DriverComplianceDetail = {
 
 // ---------------------------------------------------------------- escrita
 
-/** Corpo do `PUT …/{token}/status`. `rejectionReason` só é obrigatório com `OTHER`. */
+/** Os dados de um documento do motorista ou da van, lidos do arquivo. */
+export type DocumentData = {
+  documentNumber?: string;
+  expiresAt?: IsoDate;
+};
+
+/** Os dados da CNH, lidos do arquivo. */
+export type CnhData = {
+  registrationNumber?: string;
+  category?: string;
+  issueDate?: IsoDate;
+  validUntil?: IsoDate;
+  firstLicenseDate?: IsoDate;
+  securityNumber?: string;
+  issuingState?: string;
+};
+
+export type SubmissionData = DocumentData | CnhData;
+
+/**
+ * Corpo do `PUT …/{token}/status`. A aprovação leva os dados do tipo (D2); na
+ * recusa, a API ignora dados. `rejectionReason` só é obrigatório com `OTHER`.
+ */
 export type SubmissionStatusRequest =
-  | { status: "APPROVED"; version: number }
+  | ({ status: "APPROVED"; version: number } & SubmissionData)
   | {
       status: "REJECTED";
       version: number;
       rejectionReasonCode: DocumentRejectionReason;
       rejectionReason?: string;
     };
+
+/** Corpo do `PUT …/{token}/data`: substitui todos os dados de um envio aprovado (D25). */
+export type SubmissionDataRequest = { version: number } & SubmissionData;
 
 /** Corpo do `POST /api/drivers/{token}/reject`. `reason` só é obrigatório com `OTHER`. */
 export type DriverRejectionRequest = {

@@ -43,8 +43,12 @@ export default function SubmissionReviewPage() {
   const { state, latest, reload } = useJsonResource<DriverComplianceDetail>(
     kind ? driverComplianceUrl(params.token) : null,
   );
-  // O aviso de "mudou" vale para o envio em que aconteceu.
-  const [stale, setStale] = useState<{ submission: string; message: string } | null>(null);
+  // O aviso (mudou, ou dados corrigidos) vale para o envio em que aconteceu.
+  const [notice, setNotice] = useState<{
+    submission: string;
+    tone: "success" | "danger";
+    message: string;
+  } | null>(null);
 
   if (!kind) return <SubmissionNotFound driverToken={params.token} />;
 
@@ -64,7 +68,13 @@ export default function SubmissionReviewPage() {
 
   function onOutcome(outcome: ReviewOutcome) {
     if (outcome.kind === "stale") {
-      setStale({ submission: params.submission, message: outcome.message });
+      setNotice({ submission: params.submission, tone: "danger", message: outcome.message });
+      reload();
+      return;
+    }
+    if (outcome.kind === "corrected") {
+      // O envio continua o mesmo, com a versão nova: a tela fica nele.
+      setNotice({ submission: params.submission, tone: "success", message: review.data.corrected });
       reload();
       return;
     }
@@ -76,9 +86,9 @@ export default function SubmissionReviewPage() {
   return (
     <div>
       <ReviewHeader detail={detail} found={found} position={position} />
-      {stale?.submission === params.submission && (
-        <Notice tone="danger" onDismiss={() => setStale(null)} dismissLabel={common.close}>
-          {stale.message}
+      {notice?.submission === params.submission && (
+        <Notice tone={notice.tone} onDismiss={() => setNotice(null)} dismissLabel={common.close}>
+          {notice.message}
         </Notice>
       )}
       <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">

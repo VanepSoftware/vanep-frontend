@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { readApiProblem } from "@/lib/admin/api-problem";
 import { problemMessage } from "@/lib/admin/driver-compliance/messages";
-import { adminFileUrl, submissionStatusUrl } from "@/lib/admin/driver-compliance/urls";
+import { adminFileUrl, submissionDataUrl, submissionStatusUrl } from "@/lib/admin/driver-compliance/urls";
 
 function problem(status: number, body?: unknown): Response {
   return new Response(body === undefined ? null : JSON.stringify(body), {
@@ -20,6 +20,8 @@ describe("readApiProblem", () => {
       status: 409,
       code: "document.review.stale",
       detail: "Mudou.",
+      field: null,
+      errors: [],
       blockers: [],
     });
   });
@@ -49,6 +51,33 @@ describe("readApiProblem", () => {
     );
   });
 
+  it("reads the field of a rule error and the format errors of the body", async () => {
+    const rule = await readApiProblem(
+      problem(400, { code: "document.review.field_required", detail: "Falta.", field: "expiresAt" }),
+    );
+    expect(rule).toMatchObject({ code: "document.review.field_required", field: "expiresAt", errors: [] });
+
+    const format = await readApiProblem(
+      problem(400, {
+        detail: "A categoria da CNH deve ser D, E, AD ou AE.",
+        field: "category",
+        errors: [
+          { field: "category", message: "A categoria da CNH deve ser D, E, AD ou AE." },
+          { field: "issuingState", message: "UF emissora inválida." },
+          { message: "Sem campo." },
+          { field: "x" },
+          "lixo",
+        ],
+      }),
+    );
+    expect(format.code).toBeNull();
+    expect(format.errors).toEqual([
+      { field: "category", message: "A categoria da CNH deve ser D, E, AD ou AE." },
+      { field: "issuingState", message: "UF emissora inválida." },
+      { field: null, message: "Sem campo." },
+    ]);
+  });
+
   it("ignores codes the screen does not know", async () => {
     const result = await readApiProblem(problem(400, { code: "location.cep.invalid", detail: "CEP" }));
     expect(result.code).toBeNull();
@@ -60,6 +89,8 @@ describe("readApiProblem", () => {
       status: 403,
       code: null,
       detail: null,
+      field: null,
+      errors: [],
       blockers: [],
     });
     expect((await readApiProblem(new Response("<html>", { status: 502 }))).status).toBe(502);
@@ -67,7 +98,7 @@ describe("readApiProblem", () => {
 });
 
 describe("problemMessage", () => {
-  const base = { blockers: [] };
+  const base = { field: null, errors: [], blockers: [] };
 
   it("uses the screen's text for a known code", () => {
     expect(
@@ -90,6 +121,13 @@ describe("problemMessage", () => {
 });
 
 describe("urls", () => {
+  it("maps each kind of submission to its data correction route", () => {
+    expect(submissionDataUrl("DRIVER_DOCUMENT", "a b")).toBe("/api/admin/driver-documents/a%20b/data");
+    expect(submissionDataUrl("VEHICLE_DOCUMENT", "t")).toBe("/api/admin/vehicle-documents/t/data");
+    expect(submissionDataUrl("DRIVER_CNH", "t")).toBe("/api/admin/driver-cnhs/t/data");
+  });
+
+
   it("maps each kind of submission to its decision route", () => {
     expect(submissionStatusUrl("DRIVER_DOCUMENT", "a b")).toBe(
       "/api/admin/driver-documents/a%20b/status",
