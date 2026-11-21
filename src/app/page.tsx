@@ -10,6 +10,7 @@ import criancasEmbarcando from "@/assets/criancas-embarcando.webp";
 import vanEscolar from "@/assets/van-escolar.webp";
 
 const landing = t("landing");
+const legal = t("legal");
 
 export default function Home() {
   return (
@@ -609,9 +610,17 @@ function SiteFooter() {
           <TeamDisclosure />
 
           <div className="mt-5 flex flex-col-reverse items-start gap-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-            <p>
-              © {new Date().getFullYear()} {landing.footer.copyright}
-            </p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <p>
+                © {new Date().getFullYear()} {landing.footer.copyright}
+              </p>
+              <Link href="/privacidade" className="transition-colors duration-200 hover:text-brand">
+                {legal.privacyLink}
+              </Link>
+              <Link href="/termos" className="transition-colors duration-200 hover:text-brand">
+                {legal.termsLink}
+              </Link>
+            </div>
 
             {instagramUrl !== "" && (
               <a

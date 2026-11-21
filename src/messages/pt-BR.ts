@@ -1,3 +1,5 @@
+import legal from "./legal-pt-BR";
+
 const ptBR = {
   common: {
     confirm: "Confirmar",
@@ -451,6 +453,8 @@ const ptBR = {
       totalInfo: "{total} cargo(s) no total",
     },
   },
+
+  legal,
 } as const;
 
 export default ptBR;
