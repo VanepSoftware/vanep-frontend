@@ -837,7 +837,6 @@ const ptBR = {
         "document.data.not_approved": "Este documento não está mais aprovado. Recarregamos a versão atual.",
         "driver_cnh.registration.duplicate": "Este número de CNH já é de outro motorista.",
         "driver_cnh.issue_date.future": "A emissão não pode ser no futuro.",
-        "driver_cnh.category.invalid": "A categoria precisa ser D, E, AD ou AE.",
         "document.review.stale":
           "Este documento mudou desde que você abriu. Recarregue para ver a versão atual.",
         "document.submission.reviewed": "Este documento já foi decidido.",

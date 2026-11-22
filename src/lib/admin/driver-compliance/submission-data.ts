@@ -157,7 +157,6 @@ const FIELD_CODES = new Set<string>([
   "document.expires_at.past",
   "document.expires_at.too_far",
   "driver_cnh.issue_date.future",
-  "driver_cnh.category.invalid",
   "driver_cnh.registration.duplicate",
 ]);
 

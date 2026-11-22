@@ -17,7 +17,6 @@ const API_PROBLEM_CODES = [
   "document.submission.pending_exists",
   "driver_cnh.registration.duplicate",
   "driver_cnh.issue_date.future",
-  "driver_cnh.category.invalid",
   "driver.onboarding.documents_not_approved",
   "driver.onboarding.not_under_review",
   "driver.rejection.reason.required",
