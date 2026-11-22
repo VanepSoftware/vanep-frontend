@@ -1,4 +1,5 @@
 import type { ApiProblem } from "@/lib/admin/api-problem";
+import { isIsoDate } from "@/lib/date-input";
 import { t } from "@/lib/l10n";
 
 import type {
@@ -37,7 +38,7 @@ export type FieldSpec = {
   options?: readonly string[];
 };
 
-/** As categorias que servem para transporte escolar. Outra é recusada com `NOT_ELIGIBLE`. */
+/** As categorias que servem para transporte escolar. Outra é reprovada com `NOT_ELIGIBLE`. */
 export const CNH_CATEGORIES = ["D", "E", "AD", "AE"] as const;
 
 export const BRAZILIAN_STATES = [
@@ -131,7 +132,9 @@ export function validateData(
       if (spec.required) errors[spec.name] = { message: data.errors.required };
       continue;
     }
-    if (spec.name === "registrationNumber" && value.length < REGISTRATION_DIGITS.min) {
+    if (spec.input === "date" && !isIsoDate(value)) {
+      errors[spec.name] = { message: data.errors.invalidDate };
+    } else if (spec.name === "registrationNumber" && value.length < REGISTRATION_DIGITS.min) {
       errors[spec.name] = { message: data.errors.registrationLength };
     } else if (isExpiryField(spec.name) && !allowPast && value < today) {
       errors[spec.name] = { message: data.errors.expired, expired: true };

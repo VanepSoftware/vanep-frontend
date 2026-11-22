@@ -46,13 +46,22 @@ function respond(status: number, body: unknown = {}) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
-const field = (label: string) => screen.getByLabelText(label, { exact: false });
+/** O campo pelo rótulo, que pode terminar em "(opcional)". */
+const field = (label: string) => screen.getByLabelText(new RegExp(`^${label}`));
+
+/** O Select do shadcn (Radix): abre pelo teclado e escolhe a opção. */
+function choose(label: string, option: string) {
+  const trigger = field(label);
+  trigger.focus();
+  fireEvent.keyDown(trigger, { key: "Enter" });
+  fireEvent.click(screen.getByRole("option", { name: option }));
+}
 
 function fillCnh() {
   fireEvent.change(field("Nº de registro"), { target: { value: "012.345.667-89" } });
-  fireEvent.change(field("Categoria"), { target: { value: "D" } });
-  fireEvent.change(field("Emissão"), { target: { value: "2024-03-10" } });
-  fireEvent.change(field("Validade"), { target: { value: "2029-03-10" } });
+  choose("Categoria", "D");
+  fireEvent.change(field("Emissão"), { target: { value: "10032024" } });
+  fireEvent.change(field("Validade"), { target: { value: "10/03/2029" } });
 }
 
 const fetchMock = vi.fn();
@@ -67,6 +76,8 @@ beforeEach(() => {
   HTMLDialogElement.prototype.close ??= function (this: HTMLDialogElement) {
     this.removeAttribute("open");
   };
+  // O Select do Radix rola até a opção marcada.
+  Element.prototype.scrollIntoView ??= () => {};
 });
 
 afterEach(() => {
@@ -138,7 +149,7 @@ describe("ReviewPanel on a pending CNH", () => {
   it("turns an expired document into a rejection as expired", () => {
     renderPanel();
     fillCnh();
-    fireEvent.change(field("Validade"), { target: { value: "2026-01-10" } });
+    fireEvent.change(field("Validade"), { target: { value: "10/01/2026" } });
     fireEvent.click(screen.getByRole("button", { name: "Aprovar" }));
 
     expect(screen.getByText("Documento vencido não pode ser aprovado.")).toBeTruthy();
@@ -146,11 +157,24 @@ describe("ReviewPanel on a pending CNH", () => {
     expect((screen.getByLabelText("Documento vencido") as HTMLInputElement).checked).toBe(true);
   });
 
-  it("offers to reject a CNH of another category", () => {
+  it("refuses a date that does not exist", () => {
     renderPanel();
-    fireEvent.click(screen.getByRole("button", { name: "É de outra categoria? Reprovar" }));
-    const option = screen.getByLabelText(/Não serve para transporte escolar/) as HTMLInputElement;
-    expect(option.checked).toBe(true);
+    fillCnh();
+    fireEvent.change(field("Emissão"), { target: { value: "31/02/2024" } });
+    fireEvent.click(screen.getByRole("button", { name: "Aprovar" }));
+
+    expect(screen.getByText("Data inválida. Use dd/mm/aaaa.")).toBeTruthy();
+    expect(document.activeElement).toBe(field("Emissão"));
+  });
+
+  it("picks the date on the calendar", () => {
+    renderPanel();
+    fireEvent.change(field("Validade"), { target: { value: "10/03/2029" } });
+    fireEvent.click(screen.getByRole("button", { name: "Escolher no calendário: Validade" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: /15 de março de 2029/ }));
+
+    expect((field("Validade") as HTMLInputElement).value).toBe("15/03/2029");
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
 
@@ -162,9 +186,10 @@ describe("ReviewPanel on an approved CNH", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Corrigir dados" }));
     expect((field("Nº de registro") as HTMLInputElement).value).toBe("01234566789");
-    expect((field("UF emissora") as HTMLSelectElement).value).toBe("DF");
+    expect((field("Emissão") as HTMLInputElement).value).toBe("10/03/2024");
+    expect(field("UF emissora").textContent).toBe("DF");
     // Na correção, a validade pode ser anterior a hoje.
-    fireEvent.change(field("Validade"), { target: { value: "2026-01-10" } });
+    fireEvent.change(field("Validade"), { target: { value: "10/01/2026" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar correção" }));
 
     await waitFor(() => expect(onOutcome).toHaveBeenCalledWith({ kind: "corrected" }));

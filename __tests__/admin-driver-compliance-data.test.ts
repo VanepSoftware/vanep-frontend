@@ -137,6 +137,14 @@ describe("validateData", () => {
     expect(validateData(cnh, today, TODAY, { allowPast: false })).toEqual({});
   });
 
+  it("refuses a date typed halfway or that does not exist", () => {
+    const errors = validateData(cnh, { ...filled, issueDate: "10/03/20", firstLicenseDate: "31/02/2015" }, TODAY, {
+      allowPast: false,
+    });
+    expect(errors.issueDate?.message).toBe("Data inválida. Use dd/mm/aaaa.");
+    expect(errors.firstLicenseDate?.message).toBe("Data inválida. Use dd/mm/aaaa.");
+  });
+
   it("leaves optional fields alone when blank", () => {
     const fields = dataFields("DRIVER_DOCUMENT", "CRIMINAL_RECORD");
     expect(validateData(fields, {}, TODAY, { allowPast: false })).toEqual({});
