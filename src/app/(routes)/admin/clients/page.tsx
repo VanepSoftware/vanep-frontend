@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -13,6 +13,7 @@ import {
 } from "@/lib/admin/client-patch";
 import { CLIENT_PHOTO_ACCEPT, validateClientPhoto } from "@/lib/admin/client-photo";
 import { t } from "@/lib/l10n";
+import { useAdminQuery } from "@/lib/admin/use-admin-query";
 
 const messages = t("admin").clients;
 const common = t("common");
@@ -149,10 +150,8 @@ function ClientAvatar({
 }
 
 export default function AdminClientsPage() {
-  const [data, setData] = useState<ClientsPage | null>(null);
   const [page, setPage] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [viewTarget, setViewTarget] = useState<Client | null>(null);
@@ -164,23 +163,18 @@ export default function AdminClientsPage() {
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [photoVersion, setPhotoVersion] = useState(0);
 
-  const loadClients = useCallback(async (targetPage: number) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/admin/clients?page=${targetPage}&size=${PAGE_SIZE}`);
-      if (!res.ok) throw new Error(`status ${res.status}`);
-      setData(parsePage(await res.json()));
-    } catch {
-      setError(messages.loadError);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const list = useAdminQuery<unknown>(
+    `/api/admin/clients?page=${page}&size=${PAGE_SIZE}`,
+    messages.loadError,
+  );
+  const data = list.data === null ? null : parsePage(list.data);
+  const loading = list.loading;
+  const error = actionError ?? list.error;
 
-  useEffect(() => {
-    void loadClients(page);
-  }, [page, loadClients]);
+  function reload() {
+    setError(null);
+    list.reload();
+  }
 
   function openEdit(client: Client) {
     setEditTarget(client);
@@ -237,7 +231,7 @@ export default function AdminClientsPage() {
       }
       setEditTarget({ ...editTarget, photo: `/api/clients/${editTarget.token}/photo` });
       setPhotoVersion((version) => version + 1);
-      await loadClients(page);
+      reload();
     } catch {
       setPhotoError(messages.photoUploadError);
     } finally {
@@ -276,7 +270,7 @@ export default function AdminClientsPage() {
       }
       closeEdit();
       setViewTarget(null);
-      await loadClients(page);
+      reload();
     } catch {
       setEditError(messages.editError);
     } finally {
@@ -294,7 +288,7 @@ export default function AdminClientsPage() {
       if (!res.ok) throw new Error(`status ${res.status}`);
       setDeleteTarget(null);
       setViewTarget(null);
-      await loadClients(page);
+      reload();
     } catch {
       setError(messages.deleteError);
       setDeleteTarget(null);
@@ -317,7 +311,7 @@ export default function AdminClientsPage() {
           <span>{error}</span>
           <button
             type="button"
-            onClick={() => void loadClients(page)}
+            onClick={reload}
             className="font-semibold underline-offset-2 hover:underline"
           >
             {messages.retry}
@@ -420,7 +414,10 @@ export default function AdminClientsPage() {
           <button
             type="button"
             disabled={loading || page === 0}
-            onClick={() => setPage((current) => Math.max(0, current - 1))}
+            onClick={() => {
+              setError(null);
+              setPage((current) => Math.max(0, current - 1));
+            }}
             className="rounded-lg border border-border px-3 py-1.5 transition-all duration-200 hover:border-border-strong hover:bg-muted hover:text-foreground active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40"
           >
             {messages.previous}
@@ -433,7 +430,10 @@ export default function AdminClientsPage() {
           <button
             type="button"
             disabled={loading || page + 1 >= totalPages}
-            onClick={() => setPage((current) => current + 1)}
+            onClick={() => {
+              setError(null);
+              setPage((current) => current + 1);
+            }}
             className="rounded-lg border border-border px-3 py-1.5 transition-all duration-200 hover:border-border-strong hover:bg-muted hover:text-foreground active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40"
           >
             {messages.next}

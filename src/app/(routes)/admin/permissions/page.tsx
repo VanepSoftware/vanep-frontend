@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { t } from "@/lib/l10n";
+import { useAdminQuery } from "@/lib/admin/use-admin-query";
 
 const messages = t("admin").permissions;
 
@@ -47,11 +48,8 @@ function formatDate(value: string | null): string {
 }
 
 export default function AdminPermissionsPage() {
-  const [data, setData] = useState<BundlesPage | null>(null);
   const [page, setPage] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [allPermissions, setAllPermissions] = useState<string[]>([]);
+  const [actionError, setError] = useState<string | null>(null);
 
   const [editing, setEditing] = useState<Bundle | "new" | null>(null);
   const [formName, setFormName] = useState("");
@@ -62,37 +60,25 @@ export default function AdminPermissionsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Bundle | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const loadBundles = useCallback(async (targetPage: number) => {
-    setLoading(true);
+  const list = useAdminQuery<unknown>(
+    `/api/admin/role-permissions?page=${page}&size=${PAGE_SIZE}`,
+    messages.loadError,
+  );
+  const data = list.data === null ? null : parsePage(list.data);
+  const loading = list.loading;
+  const catalog = useAdminQuery<string[]>("/api/admin/permissions", messages.loadError);
+  const allPermissions = catalog.data ?? [];
+  const error = actionError ?? list.error ?? catalog.error;
+
+  function reload() {
     setError(null);
-    try {
-      const res = await fetch(`/api/admin/role-permissions?page=${targetPage}&size=${PAGE_SIZE}`);
-      if (!res.ok) throw new Error(`status ${res.status}`);
-      setData(parsePage(await res.json()));
-    } catch {
-      setError(messages.loadError);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    list.reload();
+  }
 
-  const loadPermissions = useCallback(async () => {
-    try {
-      const res = await fetch("/api/admin/permissions");
-      if (!res.ok) throw new Error(`status ${res.status}`);
-      setAllPermissions((await res.json()) as string[]);
-    } catch {
-      setError(messages.loadError);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadBundles(page);
-  }, [page, loadBundles]);
-
-  useEffect(() => {
-    void loadPermissions();
-  }, [loadPermissions]);
+  function retry() {
+    reload();
+    catalog.reload();
+  }
 
   function openCreate() {
     setEditing("new");
@@ -156,7 +142,7 @@ export default function AdminPermissionsPage() {
         return;
       }
       setEditing(null);
-      await loadBundles(page);
+      reload();
     } catch {
       setFormError(messages.saveError);
     } finally {
@@ -174,7 +160,7 @@ export default function AdminPermissionsPage() {
       );
       if (!res.ok) throw new Error(`status ${res.status}`);
       setDeleteTarget(null);
-      await loadBundles(page);
+      reload();
     } catch {
       setError(messages.deleteError);
       setDeleteTarget(null);
@@ -206,7 +192,7 @@ export default function AdminPermissionsPage() {
           <span>{error}</span>
           <button
             type="button"
-            onClick={() => void loadBundles(page)}
+            onClick={retry}
             className="font-semibold underline-offset-2 hover:underline"
           >
             {messages.retry}
@@ -282,7 +268,10 @@ export default function AdminPermissionsPage() {
           <button
             type="button"
             disabled={loading || page === 0}
-            onClick={() => setPage((current) => Math.max(0, current - 1))}
+            onClick={() => {
+              setError(null);
+              setPage((current) => Math.max(0, current - 1));
+            }}
             className="rounded-lg border border-border px-3 py-1.5 transition-all duration-200 hover:border-border-strong hover:bg-muted hover:text-foreground active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40"
           >
             {messages.previous}
@@ -295,7 +284,10 @@ export default function AdminPermissionsPage() {
           <button
             type="button"
             disabled={loading || page + 1 >= totalPages}
-            onClick={() => setPage((current) => current + 1)}
+            onClick={() => {
+              setError(null);
+              setPage((current) => current + 1);
+            }}
             className="rounded-lg border border-border px-3 py-1.5 transition-all duration-200 hover:border-border-strong hover:bg-muted hover:text-foreground active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40"
           >
             {messages.next}

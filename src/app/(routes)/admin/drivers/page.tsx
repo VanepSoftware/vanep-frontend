@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { t } from "@/lib/l10n";
+import { useAdminQuery } from "@/lib/admin/use-admin-query";
 
 const messages = t("admin").drivers;
 
@@ -64,30 +65,23 @@ function approvalClass(status: ApprovalStatus): string {
 }
 
 export default function AdminDriversPage() {
-  const [data, setData] = useState<DriversPage | null>(null);
   const [page, setPage] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Driver | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const loadDrivers = useCallback(async (targetPage: number) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/admin/drivers?page=${targetPage}&size=${PAGE_SIZE}`);
-      if (!res.ok) throw new Error(`status ${res.status}`);
-      setData(parsePage(await res.json()));
-    } catch {
-      setError(messages.loadError);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const list = useAdminQuery<unknown>(
+    `/api/admin/drivers?page=${page}&size=${PAGE_SIZE}`,
+    messages.loadError,
+  );
+  const data = list.data === null ? null : parsePage(list.data);
+  const loading = list.loading;
+  const error = actionError ?? list.error;
 
-  useEffect(() => {
-    void loadDrivers(page);
-  }, [page, loadDrivers]);
+  function reload() {
+    setError(null);
+    list.reload();
+  }
 
   async function confirmDelete() {
     if (!deleteTarget) return;
@@ -98,7 +92,7 @@ export default function AdminDriversPage() {
       });
       if (!res.ok) throw new Error(`status ${res.status}`);
       setDeleteTarget(null);
-      await loadDrivers(page);
+      reload();
     } catch {
       setError(messages.deleteError);
       setDeleteTarget(null);
@@ -121,7 +115,7 @@ export default function AdminDriversPage() {
           <span>{error}</span>
           <button
             type="button"
-            onClick={() => void loadDrivers(page)}
+            onClick={reload}
             className="font-semibold underline-offset-2 hover:underline"
           >
             {messages.retry}
@@ -218,7 +212,10 @@ export default function AdminDriversPage() {
           <button
             type="button"
             disabled={loading || page === 0}
-            onClick={() => setPage((current) => Math.max(0, current - 1))}
+            onClick={() => {
+              setError(null);
+              setPage((current) => Math.max(0, current - 1));
+            }}
             className="rounded-lg border border-border px-3 py-1.5 transition-all duration-200 hover:border-border-strong hover:bg-muted hover:text-foreground active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40"
           >
             {messages.previous}
@@ -231,7 +228,10 @@ export default function AdminDriversPage() {
           <button
             type="button"
             disabled={loading || page + 1 >= totalPages}
-            onClick={() => setPage((current) => current + 1)}
+            onClick={() => {
+              setError(null);
+              setPage((current) => current + 1);
+            }}
             className="rounded-lg border border-border px-3 py-1.5 transition-all duration-200 hover:border-border-strong hover:bg-muted hover:text-foreground active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40"
           >
             {messages.next}
