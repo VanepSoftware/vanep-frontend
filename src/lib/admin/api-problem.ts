@@ -15,6 +15,7 @@ const API_PROBLEM_CODES = [
   "driver.onboarding.documents_not_approved",
   "driver.onboarding.not_under_review",
   "driver.rejection.reason.required",
+  "request.conflict",
   "vehicle.plate.duplicate",
 ] as const;
 
