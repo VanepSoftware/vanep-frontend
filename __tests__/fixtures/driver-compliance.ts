@@ -43,7 +43,7 @@ export function cnhSubmission(overrides: Partial<CnhSubmission> = {}): CnhSubmis
     reviewedAt: "2026-11-10T14:05:00Z",
     createdAt: "2026-11-08T17:32:00Z",
     version: 1,
-    fileUrl: "/api/driver-cnhs/cnh1/photo?v=m2",
+    fileUrl: "/api/driver-cnhs/cnh1/file?v=m2",
     file: { mimeType: "image/jpeg", sizeBytes: 120_000, originalName: "cnh.jpg" },
     category: "D",
     issueDate: "2024-03-10",
