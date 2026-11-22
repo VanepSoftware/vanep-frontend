@@ -395,7 +395,7 @@ const accountDeletion: LegalDocument = {
   eyebrow: "Sua conta",
   title: "Excluir conta do Vanep",
   lastUpdatedLabel: "Última atualização",
-  lastUpdated: "21 de novembro de 2026",
+  lastUpdated: "22 de novembro de 2026",
   intro:
     "Esta página explica como pedir a exclusão da sua conta do aplicativo Vanep, desenvolvido pela equipe Vanep, e o que acontece com os seus dados. Você não precisa ter o app instalado.",
   tocLabel: "Nesta página",
@@ -446,8 +446,28 @@ const accountDeletion: LegalDocument = {
       ],
     },
     {
+      id: "exclusao-parcial",
+      title: "5. Excluir apenas alguns dados (sem excluir a conta)",
+      paragraphs: [
+        "Se você quer continuar usando o app Vanep, pode pedir a exclusão de dados específicos sem apagar a sua conta.",
+        "Para isso, envie um e-mail para o endereço indicado em “Contato”, abaixo, a partir do e-mail cadastrado na sua conta Vanep. No assunto, escreva “Excluir meus dados Vanep” e, no texto, liste os dados que você quer apagar. Por exemplo:",
+      ],
+      items: [
+        "Foto de perfil.",
+        "Telefone.",
+        "Endereços salvos.",
+        "Histórico de localização das viagens.",
+        "Mensagens do chat.",
+        "Dados de alunos (dependentes) cadastrados.",
+      ],
+      closing: [
+        "Alguns dados podem ser mantidos quando forem necessários para cumprir obrigações legais, fiscais ou de segurança, como os registros de contratos e pagamentos. Eles ficam guardados apenas pelo prazo exigido pela legislação, como a LGPD, e depois são apagados.",
+        "Confirmamos o recebimento e concluímos o pedido em até 15 dias.",
+      ],
+    },
+    {
       id: "contato",
-      title: "5. Contato",
+      title: "6. Contato",
       paragraphs: ["Envie o pedido de exclusão para:"],
     },
   ],
