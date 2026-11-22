@@ -2,6 +2,7 @@ import { Chip } from "@/components/ui/chip";
 import {
   decisionNote,
   formatPlate,
+  renewalNote,
   requirementDetail,
   requirementExpiry,
   requirementsSummary,
@@ -57,6 +58,7 @@ export function RequirementsList({ detail, headerAction, RowAction }: Requiremen
             key={item.requirement}
             item={item}
             today={detail.asOf}
+            renewal={renewalNote(detail, item)}
             action={RowAction ? <RowAction item={item} vehicle={null} /> : null}
           />
         ))}
@@ -83,6 +85,7 @@ export function RequirementsList({ detail, headerAction, RowAction }: Requiremen
                 key={item.requirement}
                 item={item}
                 today={detail.asOf}
+                renewal={renewalNote(detail, item)}
                 action={RowAction ? <RowAction item={item} vehicle={vehicle} /> : null}
               />
             ))}
@@ -123,10 +126,12 @@ function GroupHeader({
 function RequirementRow({
   item,
   today,
+  renewal,
   action,
 }: {
   item: RequirementStatus;
   today: string;
+  renewal: string | null;
   action: React.ReactNode;
 }) {
   const expiry = requirementExpiry(item, today);
@@ -144,9 +149,7 @@ function RequirementRow({
           )}
         </div>
         <div className="truncate text-[13px] text-muted-foreground">{requirementDetail(item)}</div>
-        {item.pending && item.state !== "PENDING" && (
-          <div className="text-[13px] font-medium text-warning">{page.renewalPending}</div>
-        )}
+        {renewal && <div className="text-[13px] font-medium text-warning">{renewal}</div>}
         {note && <div className="text-[13px] text-muted-foreground">{note}</div>}
       </div>
       <span className="justify-self-end sm:justify-self-start">
