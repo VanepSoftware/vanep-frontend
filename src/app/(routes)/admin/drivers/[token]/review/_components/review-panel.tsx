@@ -99,7 +99,13 @@ export function ReviewPanel({ detail, found, onOutcome }: ReviewPanelProps) {
         </div>
 
         {decided && <DecisionBlock title={review.decidedTitle} line={decided} />}
-        {last && <DecisionBlock title={review.lastDecisionTitle} line={last} note={review.lastDecisionNote} />}
+        {last && (
+          <DecisionBlock
+            title={review.lastDecisionTitle}
+            line={last}
+            note={item.lastDecision?.supersededAt ? review.lastDecisionNote : undefined}
+          />
+        )}
       </div>
 
       {pending && (
