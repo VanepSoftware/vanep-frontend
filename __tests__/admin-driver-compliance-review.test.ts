@@ -83,12 +83,22 @@ describe("findSubmission", () => {
 });
 
 describe("rowSubmission", () => {
-  it("opens the pending renewal first, then what counts", () => {
-    const current = documentSubmission({ token: "c1", status: "APPROVED" });
-    const pending = documentSubmission({ token: "c2" });
-    expect(rowSubmission(requirement("SCHOOL_DRIVER_COURSE", { current, pending }))).toBe(pending);
-    expect(rowSubmission(requirement("SCHOOL_DRIVER_COURSE", { current }))).toBe(current);
-    expect(rowSubmission(requirement("SCHOOL_DRIVER_COURSE"))).toBeNull();
+  const current = documentSubmission({ token: "c1", status: "APPROVED" });
+  const pending = documentSubmission({ token: "c2" });
+  const queued = detail({
+    reviewQueue: [{ kind: "DRIVER_DOCUMENT", token: "c2", requirement: "SCHOOL_DRIVER_COURSE", vehicleToken: null }],
+  });
+
+  it("opens the renewal under review first, then what counts", () => {
+    expect(rowSubmission(queued, requirement("SCHOOL_DRIVER_COURSE", { current, pending }))).toBe(pending);
+    expect(rowSubmission(queued, requirement("SCHOOL_DRIVER_COURSE", { current }))).toBe(current);
+    expect(rowSubmission(queued, requirement("SCHOOL_DRIVER_COURSE"))).toBeNull();
+  });
+
+  it("keeps what counts while the renewal waits for its file", () => {
+    const withoutFile = documentSubmission({ token: "c2", fileUrl: null, file: null });
+    const page = detail({ reviewQueue: [] });
+    expect(rowSubmission(page, requirement("SCHOOL_DRIVER_COURSE", { current, pending: withoutFile }))).toBe(current);
   });
 });
 

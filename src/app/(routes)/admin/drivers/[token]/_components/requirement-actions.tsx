@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { isAwaitingReview } from "@/lib/admin/driver-compliance/driver-page";
 import { reviewEntryHref, reviewHref, rowSubmission } from "@/lib/admin/driver-compliance/review";
 import { interpolate, plural, t } from "@/lib/l10n";
 
@@ -21,15 +22,15 @@ export function ReviewAllLink({ driverToken, pending }: { driverToken: string; p
   );
 }
 
-/** "Revisar" num envio pendente, "Ver" num já decidido; nada sem envio. */
-export function RequirementAction({ item, driverToken }: RequirementActionProps) {
-  const submission = rowSubmission(item);
+/** "Revisar" num envio da fila de revisão, "Ver" nos outros; nada sem envio. */
+export function RequirementAction({ detail, item }: RequirementActionProps) {
+  const submission = rowSubmission(detail, item);
   if (!submission) return null;
-  const pending = submission.status === "PENDING";
+  const pending = isAwaitingReview(detail, submission);
   const document = messages.requirementInSentence[item.requirement];
   return (
     <Link
-      href={reviewHref(driverToken, submission.kind, submission.token)}
+      href={reviewHref(detail.driver.token, submission.kind, submission.token)}
       aria-label={interpolate(pending ? review.reviewLabel : review.viewLabel, { document })}
       className={
         pending
