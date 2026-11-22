@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 :root {
   /* Superfícies — tema claro, fundo branco */
@@ -29,6 +30,27 @@
 
   --success: #167a4c;
   --success-soft: #e7f5ee;
+
+  /* Aviso — pendente de revisão e prazo perto do fim */
+  --warning: #7a5200;
+  --warning-soft: #fdf4dc;
+  --warning-border: #e3c06a;
+
+  /*
+   * Nomes que os componentes do shadcn (src/components/ui) esperam, apontando
+   * para a paleta acima. O "accent" do shadcn (fundo de hover) é o brand-soft:
+   * o nosso --accent é o teal da marca.
+   */
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
+  --secondary: var(--muted);
+  --secondary-foreground: var(--foreground);
+  --popover: var(--background);
+  --popover-foreground: var(--foreground);
+  --destructive: var(--danger);
+  --input: var(--border-strong);
+  --ring: var(--brand);
+  --radius: 0.5rem;
 }
 
 @theme inline {
@@ -51,6 +73,22 @@
   --color-danger-border: var(--danger-border);
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-border: var(--warning-border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-destructive: var(--destructive);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-display: var(--font-display);
@@ -60,6 +98,16 @@
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+/* Borda sem cor explícita usa a do tema, como o shadcn espera. Fica na camada
+   base para as classes de borda (border-danger etc.) continuarem vencendo. */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--border);
+  }
 }
 
 html {
