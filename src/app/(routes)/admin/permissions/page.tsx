@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  ApiErrorCodes,
+  parseApiProblem,
+  resolveApiProblemMessage,
+} from "@/lib/api-problem";
 import { t } from "@/lib/l10n";
 
 const messages = t("admin").permissions;
@@ -67,7 +72,11 @@ export default function AdminPermissionsPage() {
     setError(null);
     try {
       const res = await fetch(`/api/admin/role-permissions?page=${targetPage}&size=${PAGE_SIZE}`);
-      if (!res.ok) throw new Error(`status ${res.status}`);
+      if (!res.ok) {
+        const problem = await parseApiProblem(res);
+        setError(resolveApiProblemMessage(problem, messages.loadError));
+        return;
+      }
       setData(parsePage(await res.json()));
     } catch {
       setError(messages.loadError);
@@ -79,7 +88,11 @@ export default function AdminPermissionsPage() {
   const loadPermissions = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/permissions");
-      if (!res.ok) throw new Error(`status ${res.status}`);
+      if (!res.ok) {
+        const problem = await parseApiProblem(res);
+        setError(resolveApiProblemMessage(problem, messages.loadError));
+        return;
+      }
       setAllPermissions((await res.json()) as string[]);
     } catch {
       setError(messages.loadError);
@@ -152,7 +165,13 @@ export default function AdminPermissionsPage() {
         body: payload,
       });
       if (!res.ok) {
-        setFormError(res.status === 409 ? messages.conflict : messages.saveError);
+        const problem = await parseApiProblem(res);
+        setFormError(
+          resolveApiProblemMessage(problem, messages.saveError, {
+            [ApiErrorCodes.ROLE_PERMISSION_NAME_DUPLICATE]: messages.conflict,
+            [ApiErrorCodes.REQUEST_CONFLICT]: messages.conflict,
+          }),
+        );
         return;
       }
       setEditing(null);
@@ -172,7 +191,12 @@ export default function AdminPermissionsPage() {
         `/api/admin/role-permissions/${encodeURIComponent(deleteTarget.token)}`,
         { method: "DELETE" },
       );
-      if (!res.ok) throw new Error(`status ${res.status}`);
+      if (!res.ok) {
+        const problem = await parseApiProblem(res);
+        setError(resolveApiProblemMessage(problem, messages.deleteError));
+        setDeleteTarget(null);
+        return;
+      }
       setDeleteTarget(null);
       await loadBundles(page);
     } catch {

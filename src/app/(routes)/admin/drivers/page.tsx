@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  ApiErrorCodes,
+  parseApiProblem,
+  resolveApiProblemMessage,
+} from "@/lib/api-problem";
 import { t } from "@/lib/l10n";
 
 const messages = t("admin").drivers;
@@ -76,7 +81,11 @@ export default function AdminDriversPage() {
     setError(null);
     try {
       const res = await fetch(`/api/admin/drivers?page=${targetPage}&size=${PAGE_SIZE}`);
-      if (!res.ok) throw new Error(`status ${res.status}`);
+      if (!res.ok) {
+        const problem = await parseApiProblem(res);
+        setError(resolveApiProblemMessage(problem, messages.loadError));
+        return;
+      }
       setData(parsePage(await res.json()));
     } catch {
       setError(messages.loadError);
@@ -96,7 +105,16 @@ export default function AdminDriversPage() {
       const res = await fetch(`/api/admin/drivers/${encodeURIComponent(deleteTarget.token)}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error(`status ${res.status}`);
+      if (!res.ok) {
+        const problem = await parseApiProblem(res);
+        setError(
+          resolveApiProblemMessage(problem, messages.deleteError, {
+            [ApiErrorCodes.DRIVER_NOT_FOUND]: messages.deleteError,
+          }),
+        );
+        setDeleteTarget(null);
+        return;
+      }
       setDeleteTarget(null);
       await loadDrivers(page);
     } catch {

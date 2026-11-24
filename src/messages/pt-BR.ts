@@ -4,6 +4,10 @@ const ptBR = {
     cancel: "Cancelar",
     close: "Fechar",
     loading: "Carregando...",
+    unauthenticated: "Autenticação necessária. Faça login novamente.",
+    forbidden: "Você não tem permissão para realizar esta ação.",
+    rateLimited: "Muitas tentativas. Aguarde um momento e tente novamente.",
+    internalError: "Ocorreu um erro inesperado. Tente novamente em instantes.",
   },
 
   landing: {

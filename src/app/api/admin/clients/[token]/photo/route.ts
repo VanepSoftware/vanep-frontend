@@ -15,7 +15,22 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
   const formData = await req.formData();
   const file = formData.get("file");
   if (!(file instanceof File)) {
-    return NextResponse.json({ error: "file is required" }, { status: 400 });
+    return NextResponse.json(
+      {
+        type: "about:blank",
+        title: "Bad Request",
+        status: 400,
+        detail: "File is required.",
+        code: "validation.failed",
+        field: "file",
+        errors: [{ field: "file", code: "validation.failed", message: "file is required" }],
+        error: "file is required",
+      },
+      {
+        status: 400,
+        headers: { "Content-Type": "application/problem+json" },
+      },
+    );
   }
 
   const upstream = new FormData();

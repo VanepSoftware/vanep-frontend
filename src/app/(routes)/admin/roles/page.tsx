@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  ApiErrorCodes,
+  parseApiProblem,
+  resolveApiProblemMessage,
+} from "@/lib/api-problem";
 import { t } from "@/lib/l10n";
 
 const messages = t("admin").roles;
@@ -71,7 +76,11 @@ export default function AdminRolesPage() {
     setError(null);
     try {
       const res = await fetch(`/api/admin/roles?page=${targetPage}&size=${PAGE_SIZE}`);
-      if (!res.ok) throw new Error(`status ${res.status}`);
+      if (!res.ok) {
+        const problem = await parseApiProblem(res);
+        setError(resolveApiProblemMessage(problem, messages.loadError));
+        return;
+      }
       setData(parsePage(await res.json()));
     } catch {
       setError(messages.loadError);
@@ -83,7 +92,11 @@ export default function AdminRolesPage() {
   const loadBundles = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/role-permissions?page=0&size=100");
-      if (!res.ok) throw new Error(`status ${res.status}`);
+      if (!res.ok) {
+        const problem = await parseApiProblem(res);
+        setError(resolveApiProblemMessage(problem, messages.loadError));
+        return;
+      }
       setBundles(parsePage(await res.json()).content as unknown as Bundle[]);
     } catch {
       setError(messages.loadError);
@@ -137,7 +150,14 @@ export default function AdminRolesPage() {
         body: payload,
       });
       if (!res.ok) {
-        setFormError(messages.saveError);
+        const problem = await parseApiProblem(res);
+        setFormError(
+          resolveApiProblemMessage(problem, messages.saveError, {
+            [ApiErrorCodes.REQUEST_CONFLICT]: messages.saveError,
+            [ApiErrorCodes.ROLE_PERMISSION_NOT_FOUND]: messages.saveError,
+            [ApiErrorCodes.ROLE_NOT_FOUND]: messages.saveError,
+          }),
+        );
         return;
       }
       setEditing(null);
@@ -156,7 +176,12 @@ export default function AdminRolesPage() {
       const res = await fetch(`/api/admin/roles/${encodeURIComponent(deleteTarget.token)}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error(`status ${res.status}`);
+      if (!res.ok) {
+        const problem = await parseApiProblem(res);
+        setError(resolveApiProblemMessage(problem, messages.deleteError));
+        setDeleteTarget(null);
+        return;
+      }
       setDeleteTarget(null);
       await loadRoles(page);
     } catch {
