@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -9,6 +9,7 @@ import {
   resolveApiProblemMessage,
 } from "@/lib/api-problem";
 import { t } from "@/lib/l10n";
+import { useAdminQuery } from "@/lib/admin/use-admin-query";
 
 const messages = t("admin").roles;
 
@@ -55,11 +56,8 @@ function formatDate(value: string | null): string {
 }
 
 export default function AdminRolesPage() {
-  const [data, setData] = useState<RolesPage | null>(null);
   const [page, setPage] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [bundles, setBundles] = useState<Bundle[]>([]);
+  const [actionError, setError] = useState<string | null>(null);
 
   const [editing, setEditing] = useState<Role | "new" | null>(null);
   const [formName, setFormName] = useState("");
@@ -71,45 +69,30 @@ export default function AdminRolesPage() {
   const [deleteTarget, setDeleteTarget] = useState<Role | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const loadRoles = useCallback(async (targetPage: number) => {
-    setLoading(true);
+  const list = useAdminQuery<unknown>(
+    `/api/admin/roles?page=${page}&size=${PAGE_SIZE}`,
+    messages.loadError,
+  );
+  const data = list.data === null ? null : parsePage(list.data);
+  const loading = list.loading;
+  const catalog = useAdminQuery<unknown>(
+    "/api/admin/role-permissions?page=0&size=100",
+    messages.loadError,
+  );
+  const bundles = catalog.data === null
+    ? []
+    : parsePage(catalog.data).content as unknown as Bundle[];
+  const error = actionError ?? list.error ?? catalog.error;
+
+  function reload() {
     setError(null);
-    try {
-      const res = await fetch(`/api/admin/roles?page=${targetPage}&size=${PAGE_SIZE}`);
-      if (!res.ok) {
-        const problem = await parseApiProblem(res);
-        setError(resolveApiProblemMessage(problem, messages.loadError));
-        return;
-      }
-      setData(parsePage(await res.json()));
-    } catch {
-      setError(messages.loadError);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    list.reload();
+  }
 
-  const loadBundles = useCallback(async () => {
-    try {
-      const res = await fetch("/api/admin/role-permissions?page=0&size=100");
-      if (!res.ok) {
-        const problem = await parseApiProblem(res);
-        setError(resolveApiProblemMessage(problem, messages.loadError));
-        return;
-      }
-      setBundles(parsePage(await res.json()).content as unknown as Bundle[]);
-    } catch {
-      setError(messages.loadError);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadRoles(page);
-  }, [page, loadRoles]);
-
-  useEffect(() => {
-    void loadBundles();
-  }, [loadBundles]);
+  function retry() {
+    reload();
+    catalog.reload();
+  }
 
   function openCreate() {
     setEditing("new");
@@ -156,12 +139,13 @@ export default function AdminRolesPage() {
             [ApiErrorCodes.REQUEST_CONFLICT]: messages.saveError,
             [ApiErrorCodes.ROLE_PERMISSION_NOT_FOUND]: messages.saveError,
             [ApiErrorCodes.ROLE_NOT_FOUND]: messages.saveError,
+            [ApiErrorCodes.INTERNAL_ERROR]: messages.saveError,
           }),
         );
         return;
       }
       setEditing(null);
-      await loadRoles(page);
+      reload();
     } catch {
       setFormError(messages.saveError);
     } finally {
@@ -178,12 +162,17 @@ export default function AdminRolesPage() {
       });
       if (!res.ok) {
         const problem = await parseApiProblem(res);
-        setError(resolveApiProblemMessage(problem, messages.deleteError));
+        setError(
+          resolveApiProblemMessage(problem, messages.deleteError, {
+            [ApiErrorCodes.AUTH_FORBIDDEN]: messages.deleteError,
+            [ApiErrorCodes.INTERNAL_ERROR]: messages.deleteError,
+          }),
+        );
         setDeleteTarget(null);
         return;
       }
       setDeleteTarget(null);
-      await loadRoles(page);
+      reload();
     } catch {
       setError(messages.deleteError);
       setDeleteTarget(null);
@@ -215,7 +204,7 @@ export default function AdminRolesPage() {
           <span>{error}</span>
           <button
             type="button"
-            onClick={() => void loadRoles(page)}
+            onClick={retry}
             className="font-semibold underline-offset-2 hover:underline"
           >
             {messages.retry}
@@ -294,7 +283,10 @@ export default function AdminRolesPage() {
           <button
             type="button"
             disabled={loading || page === 0}
-            onClick={() => setPage((current) => Math.max(0, current - 1))}
+            onClick={() => {
+              setError(null);
+              setPage((current) => Math.max(0, current - 1));
+            }}
             className="rounded-lg border border-border px-3 py-1.5 transition-all duration-200 hover:border-border-strong hover:bg-muted hover:text-foreground active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40"
           >
             {messages.previous}
@@ -307,7 +299,10 @@ export default function AdminRolesPage() {
           <button
             type="button"
             disabled={loading || page + 1 >= totalPages}
-            onClick={() => setPage((current) => current + 1)}
+            onClick={() => {
+              setError(null);
+              setPage((current) => current + 1);
+            }}
             className="rounded-lg border border-border px-3 py-1.5 transition-all duration-200 hover:border-border-strong hover:bg-muted hover:text-foreground active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40"
           >
             {messages.next}
