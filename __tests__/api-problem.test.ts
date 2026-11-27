@@ -28,7 +28,7 @@ describe("api-problem", () => {
   });
 
   describe("normalizeApiProblem", () => {
-    it("normalizes full RFC 9457 ProblemDetail with errors array", () => {
+    it("normalizes full RFC 9457 ProblemDetail with errors array and retryAfter", () => {
       const raw = {
         type: "about:blank",
         title: "Bad Request",
@@ -36,6 +36,7 @@ describe("api-problem", () => {
         detail: "Validation failed on fields",
         code: "validation.failed",
         field: "name",
+        retryAfter: 60,
         errors: [
           { field: "name", code: "client.name.required", message: "Nome é obrigatório." },
           { field: "email", code: "client.email.invalid", message: "E-mail inválido." },
@@ -51,6 +52,7 @@ describe("api-problem", () => {
       expect(normalized.detail).toBe("Validation failed on fields");
       expect(normalized.code).toBe("validation.failed");
       expect(normalized.field).toBe("name");
+      expect(normalized.retryAfter).toBe(60);
       expect(normalized.errors).toHaveLength(2);
       expect(normalized.errors?.[0]).toEqual({
         field: "name",
@@ -86,6 +88,18 @@ describe("api-problem", () => {
         errors: ["invalid", null, { field: "email", message: "invalid email" }],
       });
       expect(normalized.errors).toEqual([{ field: "email", message: "invalid email" }]);
+    });
+
+    it("handles cooldown profile problem with retryAfter", () => {
+      const normalized = normalizeApiProblem({
+        status: 409,
+        code: ApiErrorCodes.USER_PROFILE_NAME_COOLDOWN,
+        field: "name",
+        retryAfter: 120,
+      });
+      expect(normalized.code).toBe("user.profile.name.cooldown");
+      expect(normalized.field).toBe("name");
+      expect(normalized.retryAfter).toBe(120);
     });
   });
 

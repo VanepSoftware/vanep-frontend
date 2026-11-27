@@ -38,6 +38,22 @@ export const ApiErrorCodes = {
   ROLE_PERMISSION_NAME_DUPLICATE: "role_permission.name.duplicate",
   ROLE_PERMISSION_NOT_FOUND: "role_permission.not_found",
   ROLE_NOT_FOUND: "role.not_found",
+
+  // Auth & Profile domain (Phase N+1)
+  AUTH_SIGNUP_DOCUMENT_DUPLICATE: "auth.signup.document.duplicate",
+  AUTH_ERROR_INVALID_CODE: "auth.error.invalid_code",
+  AUTH_ERROR_INVALID_SIGNUP_TICKET: "auth.error.invalid_signup_ticket",
+  USER_PROFILE_NAME_COOLDOWN: "user.profile.name.cooldown",
+  USER_PROFILE_PHONE_COOLDOWN: "user.profile.phone.cooldown",
+  USER_PROFILE_EMAIL_COOLDOWN: "user.profile.email.cooldown",
+  USER_PROFILE_FIELD_NULL: "user.profile.field.null",
+  USER_PROFILE_PHONE_BLANK: "user.profile.phone.blank",
+  USER_PROFILE_EMAIL_SAME: "user.profile.email.same",
+  USER_PROFILE_EMAIL_INVALID: "user.profile.email.invalid",
+  USER_PROFILE_EMAIL_REQUIRED: "user.profile.email.required",
+  USER_PROFILE_NAME_TOO_LONG: "user.profile.name.too_long",
+  USER_PROFILE_PHONE_TOO_LONG: "user.profile.phone.too_long",
+  USER_PROFILE_EMAIL_TOO_LONG: "user.profile.email.too_long",
 } as const;
 
 export type ApiErrorCode = (typeof ApiErrorCodes)[keyof typeof ApiErrorCodes] | string;
@@ -55,6 +71,7 @@ export type ApiProblem = {
   detail?: string;
   code: string;
   field?: string;
+  retryAfter?: number;
   errors?: ApiValidationError[];
   [key: string]: unknown;
 };
@@ -108,6 +125,7 @@ export function normalizeApiProblem(data: unknown, fallbackStatus = 500): ApiPro
     typeof raw.type === "string" && raw.type.trim() !== "" ? raw.type.trim() : undefined;
   const field =
     typeof raw.field === "string" && raw.field.trim() !== "" ? raw.field.trim() : undefined;
+  const retryAfter = typeof raw.retryAfter === "number" ? raw.retryAfter : undefined;
 
   let errors: ApiValidationError[] | undefined;
   if (Array.isArray(raw.errors)) {
@@ -135,6 +153,7 @@ export function normalizeApiProblem(data: unknown, fallbackStatus = 500): ApiPro
     detail,
     code,
     field,
+    retryAfter,
     errors,
   };
 }
