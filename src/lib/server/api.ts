@@ -44,7 +44,20 @@ export async function proxyApiRequest(
 ): Promise<NextResponse> {
   const auth = await requireAccessToken(req);
   if (!auth) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      {
+        type: "about:blank",
+        title: "Unauthorized",
+        status: 401,
+        detail: "Authentication required.",
+        code: "auth.unauthenticated",
+        error: "unauthorized",
+      },
+      {
+        status: 401,
+        headers: { "Content-Type": "application/problem+json" },
+      },
+    );
   }
 
   const response = await fetch(`${apiBaseUrl()}${path}`, {
@@ -82,7 +95,20 @@ export async function proxyMultipartUpload(
 ): Promise<NextResponse> {
   const auth = await requireAccessToken(req);
   if (!auth) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      {
+        type: "about:blank",
+        title: "Unauthorized",
+        status: 401,
+        detail: "Authentication required.",
+        code: "auth.unauthenticated",
+        error: "unauthorized",
+      },
+      {
+        status: 401,
+        headers: { "Content-Type": "application/problem+json" },
+      },
+    );
   }
 
   const response = await fetch(`${apiBaseUrl()}${path}`, {
@@ -138,7 +164,20 @@ function binaryHeaders(response: Response, contentType: string): HeadersInit {
 export async function proxyBinaryDownload(req: NextRequest, path: string): Promise<NextResponse> {
   const auth = await requireAccessToken(req);
   if (!auth) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      {
+        type: "about:blank",
+        title: "Unauthorized",
+        status: 401,
+        detail: "Authentication required.",
+        code: "auth.unauthenticated",
+        error: "unauthorized",
+      },
+      {
+        status: 401,
+        headers: { "Content-Type": "application/problem+json" },
+      },
+    );
   }
 
   const response = await fetch(`${apiBaseUrl()}${path}`, {

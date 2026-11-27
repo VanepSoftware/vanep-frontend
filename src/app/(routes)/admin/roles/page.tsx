@@ -3,6 +3,11 @@
 import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  ApiErrorCodes,
+  parseApiProblem,
+  resolveApiProblemMessage,
+} from "@/lib/api-problem";
 import { t } from "@/lib/l10n";
 import { useAdminQuery } from "@/lib/admin/use-admin-query";
 
@@ -128,7 +133,15 @@ export default function AdminRolesPage() {
         body: payload,
       });
       if (!res.ok) {
-        setFormError(messages.saveError);
+        const problem = await parseApiProblem(res);
+        setFormError(
+          resolveApiProblemMessage(problem, messages.saveError, {
+            [ApiErrorCodes.REQUEST_CONFLICT]: messages.saveError,
+            [ApiErrorCodes.ROLE_PERMISSION_NOT_FOUND]: messages.saveError,
+            [ApiErrorCodes.ROLE_NOT_FOUND]: messages.saveError,
+            [ApiErrorCodes.INTERNAL_ERROR]: messages.saveError,
+          }),
+        );
         return;
       }
       setEditing(null);
@@ -147,7 +160,17 @@ export default function AdminRolesPage() {
       const res = await fetch(`/api/admin/roles/${encodeURIComponent(deleteTarget.token)}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error(`status ${res.status}`);
+      if (!res.ok) {
+        const problem = await parseApiProblem(res);
+        setError(
+          resolveApiProblemMessage(problem, messages.deleteError, {
+            [ApiErrorCodes.AUTH_FORBIDDEN]: messages.deleteError,
+            [ApiErrorCodes.INTERNAL_ERROR]: messages.deleteError,
+          }),
+        );
+        setDeleteTarget(null);
+        return;
+      }
       setDeleteTarget(null);
       reload();
     } catch {

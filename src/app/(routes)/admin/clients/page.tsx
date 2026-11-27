@@ -12,6 +12,12 @@ import {
   type ClientEditForm,
 } from "@/lib/admin/client-patch";
 import { CLIENT_PHOTO_ACCEPT, validateClientPhoto } from "@/lib/admin/client-photo";
+import {
+  ApiErrorCodes,
+  parseApiProblem,
+  resolveApiProblemMessage,
+  type ApiProblem,
+} from "@/lib/api-problem";
 import { t } from "@/lib/l10n";
 import { useAdminQuery } from "@/lib/admin/use-admin-query";
 
@@ -190,19 +196,34 @@ export default function AdminClientsPage() {
     setPhotoError(null);
   }
 
-  function errorFor(status: number): string {
-    if (status === 409) return messages.editConflict;
-    if (status === 403) return messages.editForbidden;
-    if (status === 404) return messages.editNotFound;
-    return messages.editError;
+  const CLIENT_EDIT_ERROR_CODES: Partial<Record<string, string>> = {
+    [ApiErrorCodes.CLIENT_EMAIL_DUPLICATE]: messages.editConflict,
+    [ApiErrorCodes.AUTH_SIGNUP_EMAIL_DUPLICATE]: messages.editConflict,
+    [ApiErrorCodes.REQUEST_CONFLICT]: messages.editConflict,
+    [ApiErrorCodes.AUTH_FORBIDDEN]: messages.editForbidden,
+    [ApiErrorCodes.CLIENT_NOT_FOUND]: messages.editNotFound,
+    [ApiErrorCodes.CLIENT_PROFILE_NOT_FOUND]: messages.editNotFound,
+    [ApiErrorCodes.REQUEST_ROUTE_NOT_FOUND]: messages.editNotFound,
+    [ApiErrorCodes.INTERNAL_ERROR]: messages.editError,
+  };
+
+  const CLIENT_PHOTO_ERROR_CODES: Partial<Record<string, string>> = {
+    [ApiErrorCodes.REQUEST_PAYLOAD_TOO_LARGE]: messages.photoTooLarge,
+    [ApiErrorCodes.REQUEST_MEDIA_TYPE_UNSUPPORTED]: messages.photoInvalidType,
+    [ApiErrorCodes.REQUEST_PARAMETER_INVALID]: messages.photoInvalidType,
+    [ApiErrorCodes.AUTH_FORBIDDEN]: messages.editForbidden,
+    [ApiErrorCodes.CLIENT_NOT_FOUND]: messages.editNotFound,
+    [ApiErrorCodes.CLIENT_PROFILE_NOT_FOUND]: messages.editNotFound,
+    [ApiErrorCodes.REQUEST_ROUTE_NOT_FOUND]: messages.editNotFound,
+    [ApiErrorCodes.INTERNAL_ERROR]: messages.photoUploadError,
+  };
+
+  function errorFor(problem: ApiProblem): string {
+    return resolveApiProblemMessage(problem, messages.editError, CLIENT_EDIT_ERROR_CODES);
   }
 
-  function photoErrorFor(status: number): string {
-    if (status === 400) return messages.photoInvalidType;
-    if (status === 413) return messages.photoTooLarge;
-    if (status === 403) return messages.editForbidden;
-    if (status === 404) return messages.editNotFound;
-    return messages.photoUploadError;
+  function photoErrorFor(problem: ApiProblem): string {
+    return resolveApiProblemMessage(problem, messages.photoUploadError, CLIENT_PHOTO_ERROR_CODES);
   }
 
   async function uploadPhoto(file: File | null) {
@@ -226,7 +247,8 @@ export default function AdminClientsPage() {
         { method: "POST", body },
       );
       if (!res.ok) {
-        setPhotoError(photoErrorFor(res.status));
+        const problem = await parseApiProblem(res);
+        setPhotoError(photoErrorFor(problem));
         return;
       }
       setEditTarget({ ...editTarget, photo: `/api/clients/${editTarget.token}/photo` });
@@ -265,7 +287,8 @@ export default function AdminClientsPage() {
         body: JSON.stringify(patch),
       });
       if (!res.ok) {
-        setEditError(errorFor(res.status));
+        const problem = await parseApiProblem(res);
+        setEditError(errorFor(problem));
         return;
       }
       closeEdit();
@@ -285,7 +308,17 @@ export default function AdminClientsPage() {
       const res = await fetch(`/api/admin/clients/${encodeURIComponent(deleteTarget.token)}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error(`status ${res.status}`);
+      if (!res.ok) {
+        const problem = await parseApiProblem(res);
+        setError(
+          resolveApiProblemMessage(problem, messages.deleteError, {
+            [ApiErrorCodes.AUTH_FORBIDDEN]: messages.deleteError,
+            [ApiErrorCodes.INTERNAL_ERROR]: messages.deleteError,
+          }),
+        );
+        setDeleteTarget(null);
+        return;
+      }
       setDeleteTarget(null);
       setViewTarget(null);
       reload();
